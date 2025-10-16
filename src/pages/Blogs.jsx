@@ -675,7 +675,7 @@ export default function Blogs() {
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
         <DialogContent className="w-full h-full max-w-none max-h-none overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Blog Preview</DialogTitle>
+            <DialogTitle>Blog Preview.</DialogTitle>
           </DialogHeader>
           {selectedBlog && (
             <div className="space-y-4">
