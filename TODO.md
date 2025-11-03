@@ -1,14 +1,22 @@
-# TODO: Implement Blogs Management Page
+# Categories UI Redesign Task
 
-## Steps to Complete
+## Overview
+Redesign the Categories page with a complete layout change to properly handle 3-level category hierarchy (Category > Subcategory > Child Subcategory) with improved UX.
 
-- [x] Update Blogs.jsx with full structure: header, table, dialogs
-- [x] Add mock blog data array
-- [x] Implement table to list blogs with title, description, thumbnail preview, actions (Edit, View, Delete)
-- [x] Create Add Blog dialog with form: Title (input), Description (textarea), Content (textarea), Thumbnail (file input)
-- [x] Create Edit Blog dialog (reuse Add form with pre-filled data)
-- [x] Create View Blog dialog: Display full blog details with banner image upload
-- [x] Integrate React Hook Form for form handling
-- [x] Add state management for blogs list, add/edit/view modes
-- [ ] Test UI components and ensure responsive design
-- [ ] Optional: Install react-quill for rich text editor if needed
+## Tasks
+- [ ] Replace card grid layout with hierarchical table view
+- [ ] Add expand/collapse functionality for categories and subcategories
+- [ ] Implement proper indentation to show parent-child relationships
+- [ ] Add level indicators and visual hierarchy
+- [ ] Improve action placement and accessibility
+- [ ] Ensure responsive design for mobile/tablet
+- [ ] Maintain existing stats cards at the top
+- [ ] Test expand/collapse functionality across all levels
+
+## Implementation Details
+- Flatten category data into table-friendly format
+- Use state management for expanded/collapsed sections
+- Create table component with proper indentation (16px per level)
+- Add chevron icons for expandable rows
+- Include product counts and action buttons per row
+- Maintain existing dialog modals for add/edit operations

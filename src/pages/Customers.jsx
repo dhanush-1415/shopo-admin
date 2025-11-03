@@ -24,25 +24,25 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const customers = [
-  { id: 1, name: "John Doe", email: "john@example.com", phone: "+1 234 567 890", orders: 12, totalSpent: "$1,234", status: "active" },
-  { id: 2, name: "Jane Smith", email: "jane@example.com", phone: "+1 234 567 891", orders: 8, totalSpent: "$856", status: "active" },
-  { id: 3, name: "Mike Johnson", email: "mike@example.com", phone: "+1 234 567 892", orders: 5, totalSpent: "$432", status: "inactive" },
-  { id: 4, name: "Sarah Williams", email: "sarah@example.com", phone: "+1 234 567 893", orders: 15, totalSpent: "$2,100", status: "active" },
+  { id: 1, name: "John Doe", email: "john@example.com", phone: "+1 234 567 890", orders: 12, totalSpent: "₹1,234", status: "active" },
+  { id: 2, name: "Jane Smith", email: "jane@example.com", phone: "+1 234 567 891", orders: 8, totalSpent: "₹856", status: "active" },
+  { id: 3, name: "Mike Johnson", email: "mike@example.com", phone: "+1 234 567 892", orders: 5, totalSpent: "₹432", status: "inactive" },
+  { id: 4, name: "Sarah Williams", email: "sarah@example.com", phone: "+1 234 567 893", orders: 15, totalSpent: "₹2,100", status: "active" },
 ];
 
 const orderHistory = [
-  { id: "#ORD-001", date: "2024-01-15", amount: "$120", status: "delivered" },
-  { id: "#ORD-002", date: "2024-01-10", amount: "$85", status: "delivered" },
-  { id: "#ORD-003", date: "2024-01-05", amount: "$200", status: "processing" },
-  { id: "#ORD-001", date: "2024-01-15", amount: "$120", status: "delivered" },
-  { id: "#ORD-002", date: "2024-01-10", amount: "$85", status: "delivered" },
-  { id: "#ORD-003", date: "2024-01-05", amount: "$200", status: "processing" },
-  { id: "#ORD-001", date: "2024-01-15", amount: "$120", status: "delivered" },
-  { id: "#ORD-002", date: "2024-01-10", amount: "$85", status: "delivered" },
-  { id: "#ORD-003", date: "2024-01-05", amount: "$200", status: "processing" },
-  { id: "#ORD-001", date: "2024-01-15", amount: "$120", status: "delivered" },
-  { id: "#ORD-002", date: "2024-01-10", amount: "$85", status: "delivered" },
-  { id: "#ORD-003", date: "2024-01-05", amount: "$200", status: "processing" },
+  { id: "#ORD-001", date: "2024-01-15", amount: "₹120", status: "delivered" },
+  { id: "#ORD-002", date: "2024-01-10", amount: "₹85", status: "delivered" },
+  { id: "#ORD-003", date: "2024-01-05", amount: "₹200", status: "processing" },
+  { id: "#ORD-001", date: "2024-01-15", amount: "₹120", status: "delivered" },
+  { id: "#ORD-002", date: "2024-01-10", amount: "₹85", status: "delivered" },
+  { id: "#ORD-003", date: "2024-01-05", amount: "₹200", status: "processing" },
+  { id: "#ORD-001", date: "2024-01-15", amount: "₹120", status: "delivered" },
+  { id: "#ORD-002", date: "2024-01-10", amount: "₹85", status: "delivered" },
+  { id: "#ORD-003", date: "2024-01-05", amount: "₹200", status: "processing" },
+  { id: "#ORD-001", date: "2024-01-15", amount: "₹120", status: "delivered" },
+  { id: "#ORD-002", date: "2024-01-10", amount: "₹85", status: "delivered" },
+  { id: "#ORD-003", date: "2024-01-05", amount: "₹200", status: "processing" },
 ];
 
 const getStatusVariant = (status) => {
@@ -95,7 +95,7 @@ export default function Customers() {
               <TableHead className="text-left sm:text-center">Orders</TableHead>
               <TableHead className="text-left sm:text-center">Total Spent</TableHead>
               <TableHead className="text-left sm:text-center">Status</TableHead>
-              <TableHead className="text-left sm:text-center">Actions</TableHead>
+              <TableHead className="text-center">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -121,8 +121,8 @@ export default function Customers() {
                     {getStatusLabel(customer.status)}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-left sm:text-center">
-                  <div className="flex gap-1 sm:gap-2">
+                <TableCell className="text-center">
+                  <div className="flex justify-center gap-1 sm:gap-2">
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-8 w-8 sm:h-9 sm:w-9 p-0">
@@ -370,9 +370,9 @@ export default function Customers() {
                               <div className="space-y-2">
                                 <Label htmlFor="totalSpent" className="text-xs md:text-sm font-medium text-muted-foreground flex items-center gap-2">
                                   <DollarSign className="h-4 w-4" />
-                                  Total Spent ($)
+                                  Total Spent (₹)
                                 </Label>
-                                <Input id="totalSpent" defaultValue={customer.totalSpent.replace('$', '')} type="number" step="0.01" className="h-10 text-sm" />
+                                <Input id="totalSpent" defaultValue={customer.totalSpent.replace('₹', '')} type="number" step="0.01" className="h-10 text-sm" />
                               </div>
                             </div>
                           </div>

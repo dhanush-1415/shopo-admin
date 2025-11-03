@@ -7,11 +7,13 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { MainLayout } from "@/components/layout/MainLayout";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
+import Variations from "./pages/Variations";
 import Orders from "./pages/Orders";
 import Customers from "./pages/Customers";
 import Categories from "./pages/Categories";
 import Discounts from "./pages/Discounts";
 import Blogs from "./pages/Blogs";
+// import SizeChart from "./pages/SizeChart";
 
 import Logistics from "./pages/Logistics";
 
@@ -34,11 +36,13 @@ const App = () => (
             <Route element={<MainLayout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/products" element={<Products />} />
+              <Route path="/variations" element={<Variations />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/categories" element={<Categories />} />
               <Route path="/discounts" element={<Discounts />} />
               <Route path="/blogs" element={<Blogs />} />
+              {/* <Route path="/size-chart" element={<SizeChart />} /> */}
 
               <Route path="/logistics" element={<Logistics />} />
               <Route path="/gift-cards" element={<GiftCards />} />

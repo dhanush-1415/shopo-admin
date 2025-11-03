@@ -1,16 +1,24 @@
 import { useState } from 'react';
-import { Plus, Search, Edit, Trash2, Eye, Upload, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit, Trash2, Eye, Upload, AlignLeft, AlignCenter, AlignRight, Calendar, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { BlogEditor } from '@/components/blog/BlogEditor';
@@ -20,16 +28,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select"
+import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Slider } from '@/components/ui/slider';
 
 const mockBlogs = [
@@ -93,12 +94,12 @@ const mockBlogs = [
 ];
 
 export default function Blogs() {
+  const [selectedBlog, setSelectedBlog] = useState(null);
   const [blogs, setBlogs] = useState(mockBlogs);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [selectedBlog, setSelectedBlog] = useState(null);
   const [currentTab, setCurrentTab] = useState('basic');
 
   const [formData, setFormData] = useState({
@@ -513,193 +514,305 @@ export default function Blogs() {
   );
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Blog Management</h1>
-          <p className="text-muted-foreground">Create and manage blog posts</p>
+    <div className="p-4 md:p-6 space-y-6 md:space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold">Blogs</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Create and manage blog posts</p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="h-4 w-4 mr-2" />
+        <Button className="gap-2 px-4 sm:px-6 h-10 sm:h-auto" onClick={handleCreate}>
+          <Plus className="h-4 w-4" />
           Create Blog
         </Button>
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Blogs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{blogs.length}</div>
-          </CardContent>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="p-4 md:p-6 text-center">
+          <p className="text-sm text-muted-foreground mb-2">Total Blogs</p>
+          <p className="text-lg md:text-2xl font-bold">{blogs.length}</p>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Published</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {blogs.filter((b) => b.status === 'published').length}
-            </div>
-          </CardContent>
+        <Card className="p-4 md:p-6 text-center">
+          <p className="text-sm text-muted-foreground mb-2">Published</p>
+          <p className="text-lg md:text-2xl font-bold">
+            {blogs.filter((b) => b.status === 'published').length}
+          </p>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Drafts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {blogs.filter((b) => b.status === 'draft').length}
-            </div>
-          </CardContent>
+        <Card className="p-4 md:p-6 text-center">
+          <p className="text-sm text-muted-foreground mb-2">Drafts</p>
+          <p className="text-lg md:text-2xl font-bold">
+            {blogs.filter((b) => b.status === 'draft').length}
+          </p>
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search blogs..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+      <Card className="p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-4 sm:mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search blogs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-10 sm:h-auto"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="h-10 sm:h-auto">Filter</Button>
+            <Button variant="outline" size="sm" className="h-10 sm:h-auto">Export</Button>
+          </div>
         </div>
-      </div>
+      </Card>
 
-      {/* Blog List */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Thumbnail</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead>Actions</TableHead>
+      <Card className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-left sm:text-center">Thumbnail</TableHead>
+              <TableHead className="text-left sm:text-center">Title</TableHead>
+              <TableHead className="text-left sm:text-center">Description</TableHead>
+              <TableHead className="text-left sm:text-center">Status</TableHead>
+              <TableHead className="text-left sm:text-center">Updated</TableHead>
+              <TableHead className="text-left sm:text-center">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredBlogs.map((blog) => (
+              <TableRow key={blog.id} className="hover:bg-muted/50">
+                <TableCell className="text-left sm:text-center">
+                  {blog.thumbnail && (
+                    <img
+                      src={blog.thumbnail}
+                      alt={blog.title}
+                      className="w-12 h-8 object-cover rounded mx-auto sm:mx-0"
+                    />
+                  )}
+                </TableCell>
+                <TableCell className="font-medium text-left sm:text-center">{blog.title}</TableCell>
+                <TableCell className="max-w-xs truncate text-left sm:text-center">{blog.shortDescription}</TableCell>
+                <TableCell className="text-left sm:text-center">
+                  <Badge variant={blog.status === 'published' ? 'default' : 'secondary'} className="text-xs">
+                    {blog.status.charAt(0).toUpperCase() + blog.status.slice(1)}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-left sm:text-center">{blog.updatedAt}</TableCell>
+                <TableCell className="text-left sm:text-center">
+                  <div className="flex gap-1 sm:gap-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 sm:h-9 sm:w-9 p-0">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-7xl w-full h-[90vh] p-0 m-0">
+                        <DialogHeader className="p-6 border-b">
+                          <DialogTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                            <Upload className="h-5 w-5" />
+                            Blog Preview - {blog.title}
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="p-6 overflow-y-auto space-y-6">
+                          {/* Blog Header */}
+                          <Card className="overflow-hidden">
+                            <div className="flex flex-col md:flex-row md:items-start md:gap-6 p-4 md:p-6">
+                              <div className="flex-shrink-0 mb-4 md:mb-0">
+                                <div className="w-32 h-32 md:w-40 md:h-40 bg-muted rounded-lg flex items-center justify-center mx-auto md:mx-0">
+                                  <Upload className="h-8 w-8 md:h-10 md:w-10 text-muted-foreground" />
+                                </div>
+                              </div>
+                              <div className="flex-1 space-y-2">
+                                <h2 className="text-xl md:text-2xl font-bold">{blog.title}</h2>
+                                <p className="text-sm md:text-base text-muted-foreground leading-relaxed">{blog.shortDescription}</p>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs md:text-sm font-medium">Author:</span>
+                                  <Badge variant="outline" className="text-xs md:text-sm">{blog.author}</Badge>
+                                </div>
+                                <Badge
+                                  variant={blog.status === 'published' ? 'default' : 'secondary'}
+                                  className="text-xs md:text-sm mt-2"
+                                >
+                                  {blog.status.charAt(0).toUpperCase() + blog.status.slice(1)}
+                                </Badge>
+                              </div>
+                            </div>
+                          </Card>
+
+                          {/* Quick Stats */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <Card className="p-4 md:p-6 text-center">
+                              <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
+                                <Upload className="h-4 w-4" />
+                                <span className="text-xs md:text-sm">Status</span>
+                              </div>
+                              <p className="text-lg md:text-2xl font-bold text-primary">{blog.status}</p>
+                              <p className="text-xs text-muted-foreground">publication</p>
+                            </Card>
+
+                            <Card className="p-4 md:p-6 text-center">
+                              <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
+                                <Calendar className="h-4 w-4" />
+                                <span className="text-xs md:text-sm">Created</span>
+                              </div>
+                              <p className="text-lg md:text-2xl font-bold">{blog.createdAt}</p>
+                              <p className="text-xs text-muted-foreground">date</p>
+                            </Card>
+
+                            <Card className="p-4 md:p-6 text-center">
+                              <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
+                                <User className="h-4 w-4" />
+                                <span className="text-xs md:text-sm">Author</span>
+                              </div>
+                              <p className="text-lg md:text-2xl font-bold">{blog.author}</p>
+                              <p className="text-xs text-muted-foreground">writer</p>
+                            </Card>
+
+                            <Card className="p-4 md:p-6 text-center">
+                              <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
+                                <AlignCenter className="h-4 w-4" />
+                                <span className="text-xs md:text-sm">Slug</span>
+                              </div>
+                              <p className="text-lg md:text-2xl font-bold">{blog.slug}</p>
+                              <p className="text-xs text-muted-foreground">URL</p>
+                            </Card>
+                          </div>
+
+                          {/* Blog Information */}
+                          <div className="grid md:grid-cols-2 gap-6">
+                            <div>
+                              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                <AlignLeft className="h-4 w-4" />
+                                Basic Information
+                              </h3>
+                              <Card className="p-4 md:p-6 space-y-4">
+                                <div className="space-y-2">
+                                  <p className="text-xs md:text-sm text-muted-foreground">Title</p>
+                                  <p className="font-medium text-sm md:text-base">{blog.title}</p>
+                                </div>
+                                <Separator />
+                                <div className="space-y-2">
+                                  <p className="text-xs md:text-sm text-muted-foreground">Short Description</p>
+                                  <p className="font-medium text-sm md:text-base leading-relaxed">{blog.shortDescription}</p>
+                                </div>
+                                <Separator />
+                                <div className="space-y-2">
+                                  <p className="text-xs md:text-sm text-muted-foreground">Status</p>
+                                  <Badge variant={blog.status === 'published' ? 'default' : 'secondary'} className="text-xs md:text-sm">
+                                    {blog.status.charAt(0).toUpperCase() + blog.status.slice(1)}
+                                  </Badge>
+                                </div>
+                              </Card>
+                            </div>
+
+                            <div>
+                              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                <AlignRight className="h-4 w-4" />
+                                SEO Details
+                              </h3>
+                              <Card className="p-4 md:p-6 space-y-4">
+                                <div className="space-y-2">
+                                  <p className="text-xs md:text-sm text-muted-foreground">Meta Title</p>
+                                  <p className="font-medium text-sm md:text-base">{blog.metaTitle}</p>
+                                </div>
+                                <Separator />
+                                <div className="space-y-2">
+                                  <p className="text-xs md:text-sm text-muted-foreground">Meta Description</p>
+                                  <p className="font-medium text-sm md:text-base">{blog.metaDescription}</p>
+                                </div>
+                              </Card>
+                            </div>
+                          </div>
+
+                          {/* Content Preview */}
+                          <div>
+                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                              <AlignCenter className="h-4 w-4" />
+                              Content Preview
+                            </h3>
+                            <Card className="p-4 md:p-6">
+                              <div
+                                className="prose prose-sm max-w-none"
+                                dangerouslySetInnerHTML={{ __html: blog.content }}
+                              />
+                            </Card>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+                            <Button variant="outline" className="flex-1">
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Blog
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 sm:h-9 sm:w-9 p-0">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-7xl w-full h-[90vh] p-0 m-0">
+                        <DialogHeader className="px-6 py-4 border-b">
+                          <DialogTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                            <Edit className="h-5 w-5" />
+                            Edit Blog - {blog.title}
+                          </DialogTitle>
+                          <p className="text-xs md:text-sm text-muted-foreground mt-1">Update blog details to keep your content accurate.</p>
+                        </DialogHeader>
+                        <div className="p-6 space-y-6 overflow-y-auto">
+                          {renderForm()}
+                          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+                            <Button className="flex-1 h-10 sm:h-auto bg-primary hover:bg-primary/90">
+                              Save Changes
+                            </Button>
+                            <Button variant="outline" className="flex-1 h-10 sm:h-auto">
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 sm:h-9 sm:w-9 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>Duplicate</DropdownMenuItem>
+                        <DropdownMenuItem>Archive</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredBlogs.map((blog) => (
-                <TableRow key={blog.id}>
-                  <TableCell>
-                    {blog.thumbnail && (
-                      <img
-                        src={blog.thumbnail}
-                        alt={blog.title}
-                        className="w-12 h-8 object-cover rounded"
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell className="font-medium">{blog.title}</TableCell>
-                  <TableCell className="max-w-xs truncate text-left">{blog.shortDescription}</TableCell>
-                  <TableCell className="text-right">
-                    <Badge variant={blog.status === 'published' ? 'default' : 'secondary'}>
-                      {blog.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{blog.updatedAt}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handlePreview(blog)}
-                        title="Preview"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleEdit(blog)}
-                        title="Edit"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleDelete(blog.id)}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
+            ))}
+          </TableBody>
+        </Table>
       </Card>
 
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="w-full h-full max-w-none max-h-none overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create New Blog</DialogTitle>
+        <DialogContent className="max-w-7xl w-full h-[90vh] p-0 m-0">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Create New Blog
+            </DialogTitle>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1">Create a new blog post to engage your audience.</p>
           </DialogHeader>
-          {renderForm()}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>Create Blog</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="w-full h-full max-w-none max-h-none overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Blog</DialogTitle>
-          </DialogHeader>
-          {renderForm()}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Preview Dialog */}
-      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="w-full h-full max-w-none max-h-none overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Blog Preview.</DialogTitle>
-          </DialogHeader>
-          {selectedBlog && (
-            <div className="space-y-4">
-              {selectedBlog.banner && (
-                <div className={`flex ${getAlignmentClass(selectedBlog.bannerAlign || 'center')} w-full`}>
-                  <img
-                    src={selectedBlog.banner}
-                    alt={selectedBlog.title}
-                    className="rounded-lg object-cover"
-                    style={{ 
-                      width: `${selectedBlog.bannerSize || 100}%`,
-                      maxHeight: '400px'
-                    }}
-                  />
-                </div>
-              )}
-              <h1 className="text-3xl font-bold">{selectedBlog.title}</h1>
-              <p className="text-muted-foreground">{selectedBlog.shortDescription}</p>
-              <div
-                className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: selectedBlog.content }}
-              />
+          <div className="p-6 space-y-6 overflow-y-auto">
+            {renderForm()}
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+              <Button className="flex-1 h-10 sm:h-auto bg-primary hover:bg-primary/90">
+                Create Blog
+              </Button>
+              <Button variant="outline" className="flex-1 h-10 sm:h-auto">
+                Cancel
+              </Button>
             </div>
-          )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
