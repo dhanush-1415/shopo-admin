@@ -35,6 +35,7 @@ const ProductForm = ({
     careInstructions: '',
     mrp: '',
     sellingPrice: '',
+    gst: '',
     metaKeywords: '',
     metaDescription: '',
     images: '',
@@ -60,6 +61,7 @@ const ProductForm = ({
           careInstructions: initialData.careInstructions || '',
           mrp: initialData.mrp.replace('₹', '') || '',
           sellingPrice: initialData.sellingPrice.replace('₹', '') || '',
+          gst: initialData.gst || '',
           metaKeywords: initialData.metaKeywords || '',
           metaDescription: initialData.metaDescription || '',
           images: initialData.images || '',
@@ -80,6 +82,7 @@ const ProductForm = ({
           careInstructions: '',
           mrp: '',
           sellingPrice: '',
+          gst: '',
           metaKeywords: '',
           metaDescription: '',
           images: '',
@@ -176,6 +179,7 @@ const ProductForm = ({
       occasion: formData.occasion,
       mrp: `₹${formData.mrp}`,
       sellingPrice: `₹${formData.sellingPrice}`,
+      gst: formData.gst,
       description: formData.description,
       careInstructions: formData.careInstructions,
       metaKeywords: formData.metaKeywords,
@@ -378,7 +382,7 @@ const ProductForm = ({
             <IndianRupee className="h-4 w-4" />
             Pricing & Inventory
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor={`${mode}-mrp`} className="text-xs md:text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <IndianRupee className="h-4 w-4" />
@@ -392,6 +396,13 @@ const ProductForm = ({
                 Selling Price (₹)
               </Label>
               <Input id={`${mode}-sellingPrice`} value={formData.sellingPrice} onChange={(e) => setFormData(prev => ({ ...prev, sellingPrice: e.target.value }))} type="number" step="0.01" className="h-10 text-sm" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${mode}-gst`} className="text-xs md:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <IndianRupee className="h-4 w-4" />
+                GST (%)
+              </Label>
+              <Input id={`${mode}-gst`} value={formData.gst} onChange={(e) => setFormData(prev => ({ ...prev, gst: e.target.value }))} type="number" step="0.01" className="h-10 text-sm" />
             </div>
             <div className="space-y-2">
               <Label className="text-xs md:text-sm font-medium text-muted-foreground flex items-center gap-2">
