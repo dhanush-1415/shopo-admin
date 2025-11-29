@@ -1,35 +1,73 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { login } from '@/api/services/authService';
+import { useAuthStore } from '@/store/authStore';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { setAuth } = useAuthStore();
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const isAuthenticated = !!accessToken;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = location.state?.from?.pathname || '/';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, location]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     
+    // Validation
     if (!email || !password) {
       toast.error('Please enter both email and password');
       return;
     }
 
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
     setIsLoading(true);
     
-    // Simulate login
-    setTimeout(() => {
+    try {
+      const response = await login(email, password);
+
+      if (response.success && response.data) {
+        const { accessToken, user } = response.data;
+        
+        // Store authentication data
+        setAuth(accessToken, user);
+        
+        toast.success(response.data.message || 'Login successful!');
+        
+        // Redirect to the page user was trying to access, or dashboard
+        const from = location.state?.from?.pathname || '/';
+        navigate(from, { replace: true });
+      } else {
+        toast.error(response.error || 'Login failed. Please check your credentials.');
+      }
+    } catch (error) {
+      toast.error(error.message || 'An unexpected error occurred. Please try again.');
+    } finally {
       setIsLoading(false);
-      toast.success('Login successful!');
-      navigate('/');
-    }, 1000);
+    }
   };
 
   return (

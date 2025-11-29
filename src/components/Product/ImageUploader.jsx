@@ -5,22 +5,27 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-const ImageUploader = ({ initialImages = [], onImagesChange }) => {
-  const [images, setImages] = useState(initialImages.map(url => ({ url, isFile: false })));
+const ImageUploader = ({ initialImages = [], onImagesChange, onFilesChange }) => {
+  const [images, setImages] = useState(initialImages.map(url => ({ url, isFile: false, file: null })));
+  const [files, setFiles] = useState([]);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef(null);
   const dropRef = useRef(null);
 
   useEffect(() => {
     onImagesChange(images.map(img => img.url).join(','));
-  }, [images, onImagesChange]);
+    if (onFilesChange) {
+      onFilesChange(files);
+    }
+  }, [images, files, onImagesChange, onFilesChange]);
 
-  const processFiles = (files) => {
-    Array.from(files).forEach((file) => {
+  const processFiles = (fileList) => {
+    Array.from(fileList).forEach((file) => {
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (e) => {
-          setImages(prev => [...prev, { url: e.target.result, isFile: true }]);
+          setImages(prev => [...prev, { url: e.target.result, isFile: true, file }]);
+          setFiles(prev => [...prev, file]);
         };
         reader.readAsDataURL(file);
       }
@@ -48,7 +53,14 @@ const ImageUploader = ({ initialImages = [], onImagesChange }) => {
   };
 
   const removeImage = (index) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+    setImages(prev => {
+      const removed = prev[index];
+      const newImages = prev.filter((_, i) => i !== index);
+      if (removed?.file) {
+        setFiles(prevFiles => prevFiles.filter(f => f !== removed.file));
+      }
+      return newImages;
+    });
   };
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 // src/pages/Products.jsx
 import { useState, useEffect } from "react";
-import { Plus, Search, MoreVertical, Edit, Trash2, Eye, Save, X } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit, Trash2, Eye, Save, X, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -9,20 +9,56 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 import ProductForm from '@/components/Product/ProductForm';
 import ProductTable from '@/components/Product/ProductTable';
 import ProductViewer from '@/components/Product/ProductViewer';
-import { products } from '@/components/Product/productsData';
+import { getAllProducts, getProductById } from '@/api/services/productService';
+import { useAuthStore } from '@/store/authStore';
 
 export default function Products() {
+  const { getToken } = useAuthStore();
+  const [products, setProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(false);
+
+  // Fetch products from API
+  const fetchProducts = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const token = getToken();
+      const response = await getAllProducts(token);
+
+      if (response.success) {
+        setProducts(response.data || []);
+      } else {
+        setError(response.error || 'Failed to load products');
+        toast.error(response.error || 'Failed to load products');
+      }
+    } catch (err) {
+      setError(err.message || 'An unexpected error occurred');
+      toast.error(err.message || 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch products on component mount
+  useEffect(() => {
+    fetchProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCreateSave = (data) => {
     console.log('Product created:', data);
-    alert('Product created successfully!');
+    // Refresh product list after creation
+    fetchProducts();
     setIsCreateOpen(false);
   };
 
@@ -33,58 +69,54 @@ export default function Products() {
     setSelectedProduct(null);
   };
 
-  const handleView = (product) => {
-    setSelectedProduct(product);
+  const handleView = async (product) => {
     setIsViewOpen(true);
+    setIsLoadingProduct(true);
+    try {
+      const token = getToken();
+      const response = await getProductById(product.id || product._original?.id, token);
+      
+      if (response.success) {
+        setSelectedProduct(response.data);
+      } else {
+        toast.error(response.error || 'Failed to load product details');
+        // Fallback to the product from list if API fails
+        setSelectedProduct(product);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to load product details');
+      // Fallback to the product from list if API fails
+      setSelectedProduct(product);
+    } finally {
+      setIsLoadingProduct(false);
+    }
   };
 
-  const handleEdit = (product) => {
-    setSelectedProduct(product);
+  const handleEdit = async (product) => {
     setIsEditOpen(true);
+    setIsLoadingProduct(true);
+    try {
+      const token = getToken();
+      const response = await getProductById(product.id || product._original?.id, token);
+      
+      if (response.success) {
+        setSelectedProduct(response.data);
+      } else {
+        toast.error(response.error || 'Failed to load product details');
+        // Fallback to the product from list if API fails
+        setSelectedProduct(product);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to load product details');
+      // Fallback to the product from list if API fails
+      setSelectedProduct(product);
+    } finally {
+      setIsLoadingProduct(false);
+    }
   };
 
   const exportToPDF = async () => {
-    try {
-      const { jsPDF } = await import('jspdf');
-      const doc = new jsPDF();
-      let yPos = 20;
-
-      doc.setFontSize(16);
-      doc.text('Products Export', 20, yPos);
-      yPos += 20;
-
-      products.forEach((product, index) => {
-        if (yPos > 280) {
-          doc.addPage();
-          yPos = 20;
-        }
-        doc.setFontSize(12);
-        doc.text(`${index + 1}. ${product.title}`, 20, yPos);
-        yPos += 10;
-        doc.setFontSize(10);
-        doc.text(`Category: ${product.category} > ${product.subCategory} ${product.childCategory ? `> ${product.childCategory}` : ''}`, 30, yPos);
-        yPos += 5;
-        doc.text(`Description: ${product.description}`, 30, yPos);
-        yPos += 5;
-        doc.text(`Material: ${product.material} | Fit: ${product.fitType} | Occasion: ${product.occasion}`, 30, yPos);
-        yPos += 5;
-        doc.text(`Color: ${product.color} | Sizes: ${product.sizes}`, 30, yPos);
-        yPos += 5;
-        doc.text(`MRP: ${product.mrp} | Selling Price: ${product.sellingPrice} | Stock: ${product.stockQty}`, 30, yPos);
-        yPos += 5;
-        doc.text(`Care: ${product.careInstructions}`, 30, yPos);
-        yPos += 5;
-        doc.text(`Meta Keywords: ${product.metaKeywords}`, 30, yPos);
-        yPos += 5;
-        doc.text(`Meta Description: ${product.metaDescription}`, 30, yPos);
-        yPos += 10;
-      });
-
-      doc.save('products-export.pdf');
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Error generating PDF. Please try again.');
-    }
+    // PDF export is handled in ProductTable component
   };
 
   return (
@@ -94,7 +126,17 @@ export default function Products() {
           <h1 className="text-2xl sm:text-3xl font-bold">Products</h1>
           <p className="text-sm sm:text-base text-muted-foreground">Manage your product inventory</p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={fetchProducts}
+            disabled={isLoading}
+            title="Refresh products"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2 px-4 sm:px-6 h-10 sm:h-auto">
               <Plus className="h-4 w-4" />
@@ -110,31 +152,54 @@ export default function Products() {
             />
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <ProductTable 
+        products={products}
+        isLoading={isLoading}
+        error={error}
         onView={handleView}
         onEdit={handleEdit}
         onExport={exportToPDF}
+        onRefresh={fetchProducts}
       />
 
       {/* View Dialog */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
         <DialogContent className="max-w-7xl w-full h-[90vh] p-0 m-0">
-          {selectedProduct && <ProductViewer product={selectedProduct} onEdit={handleEdit} />}
+          {isLoadingProduct ? (
+            <div className="flex items-center justify-center h-[90vh]">
+              <div className="flex flex-col items-center space-y-4">
+                <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-muted-foreground">Loading product details...</p>
+              </div>
+            </div>
+          ) : selectedProduct ? (
+            <ProductViewer product={selectedProduct} onEdit={handleEdit} />
+          ) : null}
         </DialogContent>
       </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="max-w-7xl w-full h-[90vh] p-0 m-0">
-          {selectedProduct && <ProductForm 
-            isOpen={isEditOpen} 
-            onClose={() => setIsEditOpen(false)}
-            mode="edit"
-            initialData={selectedProduct}
-            onSave={handleEditSave}
-          />}
+          {isLoadingProduct ? (
+            <div className="flex items-center justify-center h-[90vh]">
+              <div className="flex flex-col items-center space-y-4">
+                <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-muted-foreground">Loading product details...</p>
+              </div>
+            </div>
+          ) : selectedProduct ? (
+            <ProductForm 
+              isOpen={isEditOpen} 
+              onClose={() => setIsEditOpen(false)}
+              mode="edit"
+              initialData={selectedProduct}
+              onSave={handleEditSave}
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

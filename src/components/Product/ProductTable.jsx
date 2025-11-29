@@ -1,6 +1,6 @@
 // src/components/Product/ProductTable.jsx
-import { useState } from "react";
-import { Search, Download, Filter, Eye, Edit, MoreVertical, Trash2 } from 'lucide-react';
+import { useState, useMemo } from "react";
+import { Search, Download, Filter, Eye, Edit, MoreVertical, Trash2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,30 +14,97 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { products } from './productsData';
 import { jsPDF } from 'jspdf';
-import { applyPlugin } from 'jspdf-autotable'; // Updated for latest jspdf-autotable v4+
+import { applyPlugin } from 'jspdf-autotable';
+import { API_CONFIG } from '@/api/config';
 
 // Apply the plugin once at module level to add autoTable to jsPDF prototype
 applyPlugin(jsPDF);
 
-const ProductTable = ({ onView, onEdit }) => {
+// Transform API product data to match component expectations
+const transformProduct = (apiProduct) => {
+  // Calculate total stock from inventories array
+  const totalStock = apiProduct.inventories?.reduce((sum, inv) => sum + (inv.availableQuantity || 0), 0) || 0;
+  
+  // Get category names (lowercase keys in API response)
+  const categoryName = apiProduct.category?.name || 'N/A';
+  const subCategoryName = apiProduct.subCategory?.name || 'N/A';
+  const childCategoryName = apiProduct.childCategory?.name || null;
+  
+  // Get image URL (can be full URL or relative path)
+  const imageUrl = apiProduct.thumbnailImage 
+    ? (apiProduct.thumbnailImage.startsWith('http') 
+        ? apiProduct.thumbnailImage 
+        : `${API_CONFIG.BASE_URL}/${apiProduct.thumbnailImage}`)
+    : null;
+
+  // Transform inventories to variations format
+  const variations = apiProduct.inventories?.map(inv => {
+    const color = inv.productColor?.color || 'N/A';
+    const sizes = Array.isArray(inv.productSize?.size) 
+      ? inv.productSize.size 
+      : (inv.productSize?.size ? [inv.productSize.size] : []);
+    
+    // Create a variation for each size
+    return sizes.map(size => ({
+      color,
+      size,
+      stock: inv.availableQuantity || 0,
+    }));
+  }).flat() || [];
+
+  return {
+    id: apiProduct.id,
+    title: apiProduct.name || 'Untitled Product',
+    category: categoryName,
+    subCategory: subCategoryName,
+    childCategory: childCategoryName,
+    description: apiProduct.description || '',
+    mrp: `₹${apiProduct.mrp || 0}`,
+    sellingPrice: `₹${apiProduct.sellingPrice || 0}`,
+    stockQty: totalStock,
+    images: imageUrl || '',
+    material: apiProduct.productMaterialId || 'N/A',
+    fitType: apiProduct.fitType || 'N/A',
+    occasion: apiProduct.occasion?.name || 'N/A',
+    seasonal: apiProduct.seasonal || 'N/A',
+    careInstructions: apiProduct.careInstructions || '',
+    metaKeywords: apiProduct.metaTitle || '',
+    metaDescription: apiProduct.metaDescription || '',
+    variations: variations,
+    gst: apiProduct.gst || 0,
+    status: apiProduct.status || 'active',
+    // Keep original API data for reference
+    _original: apiProduct,
+  };
+};
+
+const ProductTable = ({ products = [], isLoading = false, error = null, onView, onEdit, onRefresh }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [stockFilter, setStockFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [isExporting, setIsExporting] = useState(false); // Loading state for better UX
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Transform API products
+  const transformedProducts = useMemo(() => {
+    return products.map(transformProduct);
+  }, [products]);
 
   // Get unique categories for filter dropdown
-  const uniqueCategories = ['all', ...new Set(products.map(product => product.category))];
+  const uniqueCategories = useMemo(() => {
+    return ['all', ...new Set(transformedProducts.map(product => product.category))];
+  }, [transformedProducts]);
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStock = stockFilter === 'all' ||
-                         (stockFilter === 'in-stock' && product.stockQty > 0) ||
-                         (stockFilter === 'out-of-stock' && product.stockQty === 0);
-    const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
-    return matchesSearch && matchesStock && matchesCategory;
-  });
+  const filteredProducts = useMemo(() => {
+    return transformedProducts.filter(product => {
+      const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStock = stockFilter === 'all' ||
+                           (stockFilter === 'in-stock' && product.stockQty > 0) ||
+                           (stockFilter === 'out-of-stock' && product.stockQty === 0);
+      const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
+      return matchesSearch && matchesStock && matchesCategory;
+    });
+  }, [transformedProducts, searchQuery, stockFilter, categoryFilter]);
 
   // Enhanced PDF Export function for all products data with professional design
   const handleExportPDF = () => {
@@ -65,14 +132,13 @@ const ProductTable = ({ onView, onEdit }) => {
       doc.text(`Generated on: ${currentDate}`, pageWidth / 2, 25, { align: 'center' });
 
       // Table configuration with enhanced styling
-      const headers = [['Product Title', 'Image', 'Category', 'Selling Price', 'Stock Quantity']];
+      const headers = [['Product Title', 'Category', 'Selling Price', 'Stock Quantity']];
 
       // Prepare all products data (unfiltered for full export)
-      const body = products.map(product => [
+      const body = transformedProducts.map(product => [
         product.title,
-        product.images,
         product.category,
-        `$${product.sellingPrice}`, // Format price nicely
+        product.sellingPrice, // Already formatted with ₹
         product.stockQty.toString()
       ]);
 
@@ -102,11 +168,10 @@ const ProductTable = ({ onView, onEdit }) => {
           fillColor: [245, 245, 245]
         },
         columnStyles: {
-          0: { cellWidth: 80, halign: 'left' }, // Wider for title
-          1: { cellWidth: 40, halign: 'center' }, // Image
-          2: { cellWidth: 50 },
-          3: { cellWidth: 50, halign: 'right' },
-          4: { cellWidth: 40, halign: 'center' }
+          0: { cellWidth: 100, halign: 'left' }, // Wider for title
+          1: { cellWidth: 60 },
+          2: { cellWidth: 50, halign: 'right' },
+          3: { cellWidth: 40, halign: 'center' }
         },
         margin: { top: 40, left: 15, right: 15, bottom: 20 },
         didDrawPage: (data) => {
@@ -115,8 +180,8 @@ const ProductTable = ({ onView, onEdit }) => {
           doc.setTextColor(128, 128, 128);
           doc.setFont('helvetica', 'italic');
           const pageCount = doc.internal.getNumberOfPages();
-          doc.text(`Page ${data.pageNumber} of ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-          doc.text(`Total Products: ${products.length} | Total Stock: ${products.reduce((sum, p) => sum + p.stockQty, 0)}`, 15, pageHeight - 10);
+                 doc.text(`Page ${data.pageNumber} of ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+                 doc.text(`Total Products: ${transformedProducts.length} | Total Stock: ${transformedProducts.reduce((sum, p) => sum + p.stockQty, 0)}`, 15, pageHeight - 10);
         }
       });
 
@@ -198,44 +263,53 @@ const ProductTable = ({ onView, onEdit }) => {
           </div>
         </div>
         {/* Optional: Show filtered count for better UX */}
-        {filteredProducts.length !== products.length && (
+        {filteredProducts.length !== transformedProducts.length && (
           <p className="text-sm text-muted-foreground mb-4">
-            Showing {filteredProducts.length} of {products.length} products
+            Showing {filteredProducts.length} of {transformedProducts.length} products
           </p>
         )}
       </Card>
 
-      <Card className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[200px] text-left">Product</TableHead>
-              <TableHead className="text-center w-[100px]">Image</TableHead>
-              <TableHead className="text-left sm:text-center">Category</TableHead>
-              <TableHead className="text-left sm:text-center">Selling Price</TableHead>
-              <TableHead className="text-left sm:text-center">Stock</TableHead>
-              <TableHead className="text-center w-[120px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredProducts.length > 0 ? (
+      {isLoading ? (
+        <Card className="p-8">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="text-muted-foreground">Loading products...</p>
+          </div>
+        </Card>
+      ) : error ? (
+        <Card className="p-8">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <p className="text-destructive">{error}</p>
+            {onRefresh && (
+              <Button onClick={onRefresh} variant="outline">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            )}
+          </div>
+        </Card>
+      ) : (
+        <Card className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[200px] text-left">Product</TableHead>
+                <TableHead className="text-left sm:text-center">Category</TableHead>
+                <TableHead className="text-left sm:text-center">Selling Price</TableHead>
+                <TableHead className="text-left sm:text-center">Stock</TableHead>
+                <TableHead className="text-center w-[120px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredProducts.length > 0 ? (
               filteredProducts.map((product) => (
                 <TableRow key={product.id} className="hover:bg-muted/50 border-b">
                   <TableCell className="font-medium max-w-[200px] truncate" title={product.title}>
                     {product.title}
                   </TableCell>
-                  <TableCell className="text-center">
-                    <img
-                      src={product.images}
-                      alt={product.title}
-                      className="w-12 h-12 object-cover rounded-md mx-auto"
-                      onError={(e) => {
-                        e.target.src = '/placeholder-image.png'; // Fallback image
-                      }}
-                    />
-                  </TableCell>
                   <TableCell className="text-left sm:text-center">{product.category}</TableCell>
-                  <TableCell className="font-semibold text-left sm:text-center">${product.sellingPrice}</TableCell>
+                  <TableCell className="font-semibold text-left sm:text-center">{product.sellingPrice}</TableCell>
                   <TableCell className="text-left sm:text-center">
                     <span className={`px-2 py-1 rounded-full text-xs ${
                       product.stockQty > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -286,16 +360,19 @@ const ProductTable = ({ onView, onEdit }) => {
                   </TableCell>
                 </TableRow>
               ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No products found matching your filters.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </Card>
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                    {transformedProducts.length === 0 
+                      ? 'No products found. Create your first product!' 
+                      : 'No products found matching your filters.'}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
     </>
   );
 };

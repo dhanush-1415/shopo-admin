@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Search, MoreVertical, Edit, Trash2, Eye, Upload, AlignLeft, AlignCenter, AlignRight, Calendar, User } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Search, MoreVertical, Edit, Trash2, Eye, Upload, AlignLeft, AlignCenter, AlignRight, Calendar, User, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -32,75 +32,102 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
+import { toast } from 'sonner';
+import { getAllBlogs, getBlogById, createBlog, updateBlog } from '@/api/services/blogService';
+import { useAuthStore } from '@/store/authStore';
 
-const mockBlogs = [
-  {
-    id: '1',
-    title: 'Getting Started with E-commerce',
-    slug: 'getting-started-with-ecommerce',
-    shortDescription: 'Learn the basics of starting your online store and reaching customers worldwide.',
-    content: '<h2>Introduction</h2><p>E-commerce has revolutionized the way we do business...</p>',
-    thumbnail: 'https://images.unsplash.com/photo-1556742111-a301076d9d18?w=400',
-    banner: 'https://images.unsplash.com/photo-1556742111-a301076d9d18?w=1200',
-    status: 'published',
-    metaTitle: 'Getting Started with E-commerce | Your Store',
-    metaDescription: 'Learn the basics of starting your online store and reaching customers worldwide.',
-    author: 'Admin',
-    createdAt: '2024-01-15',
-    updatedAt: '2024-01-20',
-    thumbnailAlign: 'center',
+/**
+ * Transform API blog data to UI format
+ */
+const transformBlog = (apiBlog) => {
+  // Format date from ISO string to YYYY-MM-DD
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+      return new Date(dateString).toISOString().split('T')[0];
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Map status: API uses "active" -> UI uses "published"
+  const mapStatus = (status) => {
+    if (status === 'active') return 'published';
+    if (status === 'inactive') return 'draft';
+    return status || 'draft';
+  };
+
+  // Handle image URLs - check if they're valid
+  const getImageUrl = (imageUrl) => {
+    if (!imageUrl || imageUrl === 'undefined' || imageUrl.includes('/undefined')) {
+      return null;
+    }
+    return imageUrl;
+  };
+
+  return {
+    id: String(apiBlog.id),
+    title: apiBlog.title || '',
+    slug: apiBlog.slug || '',
+    shortDescription: apiBlog.shortDescription || '',
+    content: apiBlog.content || '',
+    thumbnail: getImageUrl(apiBlog.featuredImage),
+    banner: getImageUrl(apiBlog.bannerImage),
+    status: mapStatus(apiBlog.status),
+    metaTitle: apiBlog.metaTitle || '',
+    metaDescription: apiBlog.metaDescription || '',
+    author: 'Admin', // API doesn't provide author, using default
+    createdAt: formatDate(apiBlog.createdAt),
+    updatedAt: formatDate(apiBlog.updatedAt),
+    thumbnailAlign: 'center', // Default values for UI-only fields
     thumbnailSize: 100,
     bannerAlign: 'center',
     bannerSize: 100,
-  },
-  {
-    id: '2',
-    title: '10 Marketing Tips for Online Stores',
-    slug: '10-marketing-tips-for-online-stores',
-    shortDescription: 'Boost your sales with these proven marketing strategies for e-commerce businesses.',
-    content: '<h2>Marketing Strategies</h2><p>Here are ten proven strategies...</p>',
-    thumbnail: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400',
-    banner: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1200',
-    status: 'published',
-    metaTitle: '10 Marketing Tips for Online Stores',
-    metaDescription: 'Boost your sales with these proven marketing strategies for e-commerce businesses.',
-    author: 'Admin',
-    createdAt: '2024-02-01',
-    updatedAt: '2024-02-05',
-    thumbnailAlign: 'center',
-    thumbnailSize: 100,
-    bannerAlign: 'center',
-    bannerSize: 100,
-  },
-  {
-    id: '3',
-    title: 'Future of Digital Payments',
-    slug: 'future-of-digital-payments',
-    shortDescription: 'Explore the latest trends in digital payment technologies and what they mean for businesses.',
-    content: '<h2>Digital Payment Trends</h2><p>The payment landscape is evolving...</p>',
-    thumbnail: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=400',
-    banner: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=1200',
-    status: 'draft',
-    metaTitle: 'Future of Digital Payments',
-    metaDescription: 'Explore the latest trends in digital payment technologies.',
-    author: 'Admin',
-    createdAt: '2024-02-10',
-    updatedAt: '2024-02-12',
-    thumbnailAlign: 'center',
-    thumbnailSize: 100,
-    bannerAlign: 'center',
-    bannerSize: 100,
-  },
-];
+  };
+};
 
 export default function Blogs() {
+  const { getToken } = useAuthStore();
   const [selectedBlog, setSelectedBlog] = useState(null);
-  const [blogs, setBlogs] = useState(mockBlogs);
+  const [blogs, setBlogs] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [currentTab, setCurrentTab] = useState('basic');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingBlog, setIsLoadingBlog] = useState(false);
+  const [featuredImageFile, setFeaturedImageFile] = useState(null);
+  const [bannerImageFile, setBannerImageFile] = useState(null);
+
+  // Fetch blogs from API
+  const fetchBlogs = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const token = getToken();
+      const response = await getAllBlogs(token);
+
+      if (response.success) {
+        const transformedBlogs = (response.data || []).map(transformBlog);
+        setBlogs(transformedBlogs);
+      } else {
+        setError(response.error || 'Failed to load blogs');
+        toast.error(response.error || 'Failed to load blogs');
+      }
+    } catch (err) {
+      setError(err.message || 'An unexpected error occurred');
+      toast.error(err.message || 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBlogs();
+  }, []);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -139,34 +166,83 @@ export default function Blogs() {
       bannerAlign: 'center',
       bannerSize: 100,
     });
+    setFeaturedImageFile(null);
+    setBannerImageFile(null);
+    setSelectedBlog(null);
     setCurrentTab('basic');
     setIsCreateOpen(true);
   };
 
-  const handleEdit = (blog) => {
+  const handleEdit = async (blog) => {
     setSelectedBlog(blog);
-    setFormData({
-      title: blog.title,
-      slug: blog.slug,
-      shortDescription: blog.shortDescription,
-      content: blog.content,
-      thumbnail: blog.thumbnail,
-      banner: blog.banner,
-      status: blog.status,
-      metaTitle: blog.metaTitle,
-      metaDescription: blog.metaDescription,
-      thumbnailAlign: blog.thumbnailAlign || 'center',
-      thumbnailSize: blog.thumbnailSize || 100,
-      bannerAlign: blog.bannerAlign || 'center',
-      bannerSize: blog.bannerSize || 100,
-    });
-    setCurrentTab('basic');
     setIsEditOpen(true);
+    setIsLoadingBlog(true);
+    try {
+      const token = getToken();
+      const response = await getBlogById(blog.id, token);
+
+      if (response.success && response.data) {
+        const apiBlog = response.data;
+        // Map API status: "active" -> "published"
+        const status = apiBlog.status === 'active' ? 'published' : (apiBlog.status === 'inactive' ? 'draft' : apiBlog.status);
+        
+        setFormData({
+          title: apiBlog.title || '',
+          slug: apiBlog.slug || '',
+          shortDescription: apiBlog.shortDescription || '',
+          content: apiBlog.content || '',
+          thumbnail: apiBlog.featuredImage || '',
+          banner: apiBlog.bannerImage || '',
+          status: status,
+          metaTitle: apiBlog.metaTitle || '',
+          metaDescription: apiBlog.metaDescription || '',
+          thumbnailAlign: 'center',
+          thumbnailSize: 100,
+          bannerAlign: 'center',
+          bannerSize: 100,
+        });
+        setFeaturedImageFile(null);
+        setBannerImageFile(null);
+        setCurrentTab('basic');
+      } else {
+        toast.error(response.error || 'Failed to load blog details');
+        setIsEditOpen(false);
+        setSelectedBlog(null);
+      }
+    } catch (err) {
+      toast.error(err.message || 'An unexpected error occurred');
+      setIsEditOpen(false);
+      setSelectedBlog(null);
+    } finally {
+      setIsLoadingBlog(false);
+    }
   };
 
-  const handlePreview = (blog) => {
+  const handlePreview = async (blog) => {
     setSelectedBlog(blog);
     setIsPreviewOpen(true);
+    setIsLoadingBlog(true);
+    try {
+      const token = getToken();
+      const response = await getBlogById(blog.id, token);
+
+      if (response.success && response.data) {
+        const apiBlog = response.data;
+        // Transform API blog to UI format
+        const transformedBlog = transformBlog(apiBlog);
+        setSelectedBlog(transformedBlog);
+      } else {
+        toast.error(response.error || 'Failed to load blog details');
+        setIsPreviewOpen(false);
+        setSelectedBlog(null);
+      }
+    } catch (err) {
+      toast.error(err.message || 'An unexpected error occurred');
+      setIsPreviewOpen(false);
+      setSelectedBlog(null);
+    } finally {
+      setIsLoadingBlog(false);
+    }
   };
 
   const handleDelete = (id) => {
@@ -175,30 +251,119 @@ export default function Blogs() {
     }
   };
 
-  const handleSave = () => {
-    if (selectedBlog) {
-      setBlogs(
-        blogs.map((blog) =>
-          blog.id === selectedBlog.id
-            ? {
-                ...blog,
-                ...formData,
-                updatedAt: new Date().toISOString().split('T')[0],
-              }
-            : blog
-        )
-      );
-      setIsEditOpen(false);
-    } else {
-      const newBlog = {
-        id: String(blogs.length + 1),
-        ...formData,
-        author: 'Admin',
-        createdAt: new Date().toISOString().split('T')[0],
-        updatedAt: new Date().toISOString().split('T')[0],
+  // Validation functions
+  const isBasicInfoValid = () => {
+    return formData.title && formData.slug && formData.shortDescription;
+  };
+
+  const isContentValid = () => {
+    return formData.content && formData.content.trim().length > 0;
+  };
+
+  const isSEOValid = () => {
+    return formData.metaTitle && formData.metaDescription;
+  };
+
+  const handleContinue = () => {
+    if (currentTab === 'basic') {
+      if (!isBasicInfoValid()) {
+        toast.error('Please fill in all required fields in Basic Info');
+        return;
+      }
+      setCurrentTab('content');
+    } else if (currentTab === 'content') {
+      if (!isContentValid()) {
+        toast.error('Please fill in the content');
+        return;
+      }
+      setCurrentTab('seo');
+    }
+  };
+
+  const handleSave = async () => {
+    // Validate all required fields
+    if (!isBasicInfoValid()) {
+      toast.error('Please fill in all required fields in Basic Info');
+      setCurrentTab('basic');
+      return;
+    }
+    if (!isContentValid()) {
+      toast.error('Please fill in the content');
+      setCurrentTab('content');
+      return;
+    }
+    if (!isSEOValid()) {
+      toast.error('Please fill in all SEO fields');
+      setCurrentTab('seo');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const token = getToken();
+      const isEditMode = !!selectedBlog;
+      
+      // Prepare blog data for API
+      const blogData = {
+        title: formData.title,
+        slug: formData.slug,
+        shortDescription: formData.shortDescription,
+        content: formData.content,
+        metaTitle: formData.metaTitle,
+        metaDescription: formData.metaDescription,
+        featuredImage: featuredImageFile,
+        bannerImage: bannerImageFile,
       };
-      setBlogs([...blogs, newBlog]);
-      setIsCreateOpen(false);
+
+      // Add id and status for update
+      if (isEditMode) {
+        blogData.id = selectedBlog.id;
+        // Map UI status back to API status: "published" -> "active"
+        blogData.status = formData.status === 'published' ? 'active' : (formData.status === 'draft' ? 'inactive' : formData.status);
+      }
+
+      const response = isEditMode 
+        ? await updateBlog(blogData, token)
+        : await createBlog(blogData, token);
+
+      if (response.success) {
+        toast.success(isEditMode ? 'Blog updated successfully' : 'Blog created successfully');
+        
+        if (isEditMode) {
+          setIsEditOpen(false);
+        } else {
+          setIsCreateOpen(false);
+        }
+        
+        // Reset form
+        setFormData({
+          title: '',
+          slug: '',
+          shortDescription: '',
+          content: '',
+          thumbnail: '',
+          banner: '',
+          status: 'draft',
+          metaTitle: '',
+          metaDescription: '',
+          thumbnailAlign: 'center',
+          thumbnailSize: 100,
+          bannerAlign: 'center',
+          bannerSize: 100,
+        });
+        setFeaturedImageFile(null);
+        setBannerImageFile(null);
+        setSelectedBlog(null);
+        setCurrentTab('basic');
+        // Refresh blog list
+        fetchBlogs();
+      } else {
+        toast.error(response.error || (isEditMode ? 'Failed to update blog' : 'Failed to create blog'));
+      }
+    } catch (err) {
+      toast.error(err.message || 'An unexpected error occurred');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -206,6 +371,13 @@ export default function Blogs() {
     if (file) {
       const url = URL.createObjectURL(file);
       setFormData({ ...formData, [field]: url });
+      
+      // Store File object for API submission
+      if (field === 'thumbnail') {
+        setFeaturedImageFile(file);
+      } else if (field === 'banner') {
+        setBannerImageFile(file);
+      }
     }
   };
 
@@ -558,6 +730,16 @@ export default function Blogs() {
             />
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-10 sm:h-auto gap-2"
+              onClick={fetchBlogs}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
             <Button variant="outline" size="sm" className="h-10 sm:h-auto">Filter</Button>
             <Button variant="outline" size="sm" className="h-10 sm:h-auto">Export</Button>
           </div>
@@ -565,231 +747,305 @@ export default function Blogs() {
       </Card>
 
       <Card className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-left sm:text-center">Thumbnail</TableHead>
-              <TableHead className="text-left sm:text-center">Title</TableHead>
-              <TableHead className="text-left sm:text-center">Description</TableHead>
-              <TableHead className="text-left sm:text-center">Status</TableHead>
-              <TableHead className="text-left sm:text-center">Updated</TableHead>
-              <TableHead className="text-left sm:text-center">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredBlogs.map((blog) => (
-              <TableRow key={blog.id} className="hover:bg-muted/50">
-                <TableCell className="text-left sm:text-center">
-                  {blog.thumbnail && (
-                    <img
-                      src={blog.thumbnail}
-                      alt={blog.title}
-                      className="w-12 h-8 object-cover rounded mx-auto sm:mx-0"
-                    />
-                  )}
-                </TableCell>
-                <TableCell className="font-medium text-left sm:text-center">{blog.title}</TableCell>
-                <TableCell className="max-w-xs truncate text-left sm:text-center">{blog.shortDescription}</TableCell>
-                <TableCell className="text-left sm:text-center">
-                  <Badge variant={blog.status === 'published' ? 'default' : 'secondary'} className="text-xs">
-                    {blog.status.charAt(0).toUpperCase() + blog.status.slice(1)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-left sm:text-center">{blog.updatedAt}</TableCell>
-                <TableCell className="text-left sm:text-center">
-                  <div className="flex gap-1 sm:gap-2">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 sm:h-9 sm:w-9 p-0">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button variant="outline" onClick={fetchBlogs} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-left sm:text-center">Thumbnail</TableHead>
+                <TableHead className="text-left sm:text-center">Title</TableHead>
+                <TableHead className="text-left sm:text-center">Description</TableHead>
+                <TableHead className="text-left sm:text-center">Status</TableHead>
+                <TableHead className="text-left sm:text-center">Updated</TableHead>
+                <TableHead className="text-left sm:text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredBlogs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    {searchQuery ? `No blogs found matching "${searchQuery}"` : 'No blogs found'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredBlogs.map((blog) => (
+                  <TableRow key={blog.id} className="hover:bg-muted/50">
+                    <TableCell className="text-left sm:text-center">
+                      {blog.thumbnail && (
+                        <img
+                          src={blog.thumbnail}
+                          alt={blog.title}
+                          className="w-12 h-8 object-cover rounded mx-auto sm:mx-0"
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell className="font-medium text-left sm:text-center">{blog.title}</TableCell>
+                    <TableCell className="max-w-xs truncate text-left sm:text-center">{blog.shortDescription}</TableCell>
+                    <TableCell className="text-left sm:text-center">
+                      <Badge variant={blog.status === 'published' ? 'default' : 'secondary'} className="text-xs">
+                        {blog.status.charAt(0).toUpperCase() + blog.status.slice(1)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-left sm:text-center">{blog.updatedAt}</TableCell>
+                    <TableCell className="text-left sm:text-center">
+                      <div className="flex gap-1 sm:gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 sm:h-9 sm:w-9 p-0"
+                          onClick={() => handlePreview(blog)}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-7xl w-full h-[90vh] p-0 m-0">
-                        <DialogHeader className="p-6 border-b">
-                          <DialogTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-                            <Upload className="h-5 w-5" />
-                            Blog Preview - {blog.title}
-                          </DialogTitle>
-                        </DialogHeader>
-                        <div className="p-6 overflow-y-auto space-y-6">
-                          {/* Blog Header */}
-                          <Card className="overflow-hidden">
-                            <div className="flex flex-col md:flex-row md:items-start md:gap-6 p-4 md:p-6">
-                              <div className="flex-shrink-0 mb-4 md:mb-0">
-                                <div className="w-32 h-32 md:w-40 md:h-40 bg-muted rounded-lg flex items-center justify-center mx-auto md:mx-0">
-                                  <Upload className="h-8 w-8 md:h-10 md:w-10 text-muted-foreground" />
+                        <Dialog open={isPreviewOpen && selectedBlog?.id === blog.id} onOpenChange={(open) => {
+                          if (!open) {
+                            setIsPreviewOpen(false);
+                            setSelectedBlog(null);
+                          }
+                        }}>
+                          <DialogContent className="max-w-7xl w-full h-[90vh] p-0 m-0">
+                            <DialogHeader className="p-6 border-b">
+                              <DialogTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                                <Upload className="h-5 w-5" />
+                                Blog Preview {selectedBlog ? `- ${selectedBlog.title}` : ''}
+                              </DialogTitle>
+                            </DialogHeader>
+                            <div className="p-6 overflow-y-auto space-y-6">
+                              {isLoadingBlog ? (
+                                <div className="flex items-center justify-center py-12">
+                                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                                 </div>
-                              </div>
-                              <div className="flex-1 space-y-2">
-                                <h2 className="text-xl md:text-2xl font-bold">{blog.title}</h2>
-                                <p className="text-sm md:text-base text-muted-foreground leading-relaxed">{blog.shortDescription}</p>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs md:text-sm font-medium">Author:</span>
-                                  <Badge variant="outline" className="text-xs md:text-sm">{blog.author}</Badge>
-                                </div>
-                                <Badge
-                                  variant={blog.status === 'published' ? 'default' : 'secondary'}
-                                  className="text-xs md:text-sm mt-2"
-                                >
-                                  {blog.status.charAt(0).toUpperCase() + blog.status.slice(1)}
-                                </Badge>
-                              </div>
-                            </div>
-                          </Card>
-
-                          {/* Quick Stats */}
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <Card className="p-4 md:p-6 text-center">
-                              <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
-                                <Upload className="h-4 w-4" />
-                                <span className="text-xs md:text-sm">Status</span>
-                              </div>
-                              <p className="text-lg md:text-2xl font-bold text-primary">{blog.status}</p>
-                              <p className="text-xs text-muted-foreground">publication</p>
-                            </Card>
-
-                            <Card className="p-4 md:p-6 text-center">
-                              <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
-                                <Calendar className="h-4 w-4" />
-                                <span className="text-xs md:text-sm">Created</span>
-                              </div>
-                              <p className="text-lg md:text-2xl font-bold">{blog.createdAt}</p>
-                              <p className="text-xs text-muted-foreground">date</p>
-                            </Card>
-
-                            <Card className="p-4 md:p-6 text-center">
-                              <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
-                                <User className="h-4 w-4" />
-                                <span className="text-xs md:text-sm">Author</span>
-                              </div>
-                              <p className="text-lg md:text-2xl font-bold">{blog.author}</p>
-                              <p className="text-xs text-muted-foreground">writer</p>
-                            </Card>
-
-                            <Card className="p-4 md:p-6 text-center">
-                              <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
-                                <AlignCenter className="h-4 w-4" />
-                                <span className="text-xs md:text-sm">Slug</span>
-                              </div>
-                              <p className="text-lg md:text-2xl font-bold">{blog.slug}</p>
-                              <p className="text-xs text-muted-foreground">URL</p>
-                            </Card>
-                          </div>
-
-                          {/* Blog Information */}
-                          <div className="grid md:grid-cols-2 gap-6">
-                            <div>
-                              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                                <AlignLeft className="h-4 w-4" />
-                                Basic Information
-                              </h3>
-                              <Card className="p-4 md:p-6 space-y-4">
-                                <div className="space-y-2">
-                                  <p className="text-xs md:text-sm text-muted-foreground">Title</p>
-                                  <p className="font-medium text-sm md:text-base">{blog.title}</p>
-                                </div>
-                                <Separator />
-                                <div className="space-y-2">
-                                  <p className="text-xs md:text-sm text-muted-foreground">Short Description</p>
-                                  <p className="font-medium text-sm md:text-base leading-relaxed">{blog.shortDescription}</p>
-                                </div>
-                                <Separator />
-                                <div className="space-y-2">
-                                  <p className="text-xs md:text-sm text-muted-foreground">Status</p>
-                                  <Badge variant={blog.status === 'published' ? 'default' : 'secondary'} className="text-xs md:text-sm">
-                                    {blog.status.charAt(0).toUpperCase() + blog.status.slice(1)}
-                                  </Badge>
+                              ) : selectedBlog ? (
+                                <>
+                              {/* Blog Header */}
+                              <Card className="overflow-hidden">
+                                <div className="flex flex-col md:flex-row md:items-start md:gap-6 p-4 md:p-6">
+                                  <div className="flex-shrink-0 mb-4 md:mb-0">
+                                    <div className="w-32 h-32 md:w-40 md:h-40 bg-muted rounded-lg flex items-center justify-center mx-auto md:mx-0">
+                                      <Upload className="h-8 w-8 md:h-10 md:w-10 text-muted-foreground" />
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 space-y-2">
+                                    <h2 className="text-xl md:text-2xl font-bold">{selectedBlog.title}</h2>
+                                    <p className="text-sm md:text-base text-muted-foreground leading-relaxed">{selectedBlog.shortDescription}</p>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs md:text-sm font-medium">Author:</span>
+                                      <Badge variant="outline" className="text-xs md:text-sm">{selectedBlog.author}</Badge>
+                                    </div>
+                                    <Badge
+                                      variant={selectedBlog.status === 'published' ? 'default' : 'secondary'}
+                                      className="text-xs md:text-sm mt-2"
+                                    >
+                                      {selectedBlog.status.charAt(0).toUpperCase() + selectedBlog.status.slice(1)}
+                                    </Badge>
+                                  </div>
                                 </div>
                               </Card>
-                            </div>
 
-                            <div>
-                              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                                <AlignRight className="h-4 w-4" />
-                                SEO Details
-                              </h3>
-                              <Card className="p-4 md:p-6 space-y-4">
-                                <div className="space-y-2">
-                                  <p className="text-xs md:text-sm text-muted-foreground">Meta Title</p>
-                                  <p className="font-medium text-sm md:text-base">{blog.metaTitle}</p>
+                              {/* Quick Stats */}
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <Card className="p-4 md:p-6 text-center">
+                                  <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
+                                    <Upload className="h-4 w-4" />
+                                    <span className="text-xs md:text-sm">Status</span>
+                                  </div>
+                                  <p className="text-lg md:text-2xl font-bold text-primary">{selectedBlog.status}</p>
+                                  <p className="text-xs text-muted-foreground">publication</p>
+                                </Card>
+
+                                <Card className="p-4 md:p-6 text-center">
+                                  <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
+                                    <Calendar className="h-4 w-4" />
+                                    <span className="text-xs md:text-sm">Created</span>
+                                  </div>
+                                  <p className="text-lg md:text-2xl font-bold">{selectedBlog.createdAt}</p>
+                                  <p className="text-xs text-muted-foreground">date</p>
+                                </Card>
+
+                                <Card className="p-4 md:p-6 text-center">
+                                  <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
+                                    <User className="h-4 w-4" />
+                                    <span className="text-xs md:text-sm">Author</span>
+                                  </div>
+                                  <p className="text-lg md:text-2xl font-bold">{selectedBlog.author}</p>
+                                  <p className="text-xs text-muted-foreground">writer</p>
+                                </Card>
+
+                                <Card className="p-4 md:p-6 text-center">
+                                  <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
+                                    <AlignCenter className="h-4 w-4" />
+                                    <span className="text-xs md:text-sm">Slug</span>
+                                  </div>
+                                  <p className="text-lg md:text-2xl font-bold">{selectedBlog.slug}</p>
+                                  <p className="text-xs text-muted-foreground">URL</p>
+                                </Card>
+                              </div>
+
+                              {/* Blog Information */}
+                              <div className="grid md:grid-cols-2 gap-6">
+                                <div>
+                                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                    <AlignLeft className="h-4 w-4" />
+                                    Basic Information
+                                  </h3>
+                                  <Card className="p-4 md:p-6 space-y-4">
+                                    <div className="space-y-2">
+                                      <p className="text-xs md:text-sm text-muted-foreground">Title</p>
+                                      <p className="font-medium text-sm md:text-base">{selectedBlog.title}</p>
+                                    </div>
+                                    <Separator />
+                                    <div className="space-y-2">
+                                      <p className="text-xs md:text-sm text-muted-foreground">Short Description</p>
+                                      <p className="font-medium text-sm md:text-base leading-relaxed">{selectedBlog.shortDescription}</p>
+                                    </div>
+                                    <Separator />
+                                    <div className="space-y-2">
+                                      <p className="text-xs md:text-sm text-muted-foreground">Status</p>
+                                      <Badge variant={selectedBlog.status === 'published' ? 'default' : 'secondary'} className="text-xs md:text-sm">
+                                        {selectedBlog.status.charAt(0).toUpperCase() + selectedBlog.status.slice(1)}
+                                      </Badge>
+                                    </div>
+                                  </Card>
                                 </div>
-                                <Separator />
-                                <div className="space-y-2">
-                                  <p className="text-xs md:text-sm text-muted-foreground">Meta Description</p>
-                                  <p className="font-medium text-sm md:text-base">{blog.metaDescription}</p>
+
+                                <div>
+                                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                    <AlignRight className="h-4 w-4" />
+                                    SEO Details
+                                  </h3>
+                                  <Card className="p-4 md:p-6 space-y-4">
+                                    <div className="space-y-2">
+                                      <p className="text-xs md:text-sm text-muted-foreground">Meta Title</p>
+                                      <p className="font-medium text-sm md:text-base">{selectedBlog.metaTitle}</p>
+                                    </div>
+                                    <Separator />
+                                    <div className="space-y-2">
+                                      <p className="text-xs md:text-sm text-muted-foreground">Meta Description</p>
+                                      <p className="font-medium text-sm md:text-base">{selectedBlog.metaDescription}</p>
+                                    </div>
+                                  </Card>
                                 </div>
-                              </Card>
+                              </div>
+
+                              {/* Content Preview */}
+                              <div>
+                                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                  <AlignCenter className="h-4 w-4" />
+                                  Content Preview
+                                </h3>
+                                <Card className="p-4 md:p-6">
+                                  <div
+                                    className="prose prose-sm max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: selectedBlog.content }}
+                                  />
+                                </Card>
+                              </div>
+
+                              {/* Actions */}
+                              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+                                <Button variant="outline" className="flex-1">
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit Blog
+                                </Button>
+                              </div>
+                                </>
+                              ) : (
+                                <div className="text-center text-muted-foreground py-12">
+                                  No blog data available
+                                </div>
+                              )}
                             </div>
-                          </div>
-
-                          {/* Content Preview */}
-                          <div>
-                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                              <AlignCenter className="h-4 w-4" />
-                              Content Preview
-                            </h3>
-                            <Card className="p-4 md:p-6">
-                              <div
-                                className="prose prose-sm max-w-none"
-                                dangerouslySetInnerHTML={{ __html: blog.content }}
-                              />
-                            </Card>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-                            <Button variant="outline" className="flex-1">
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Blog
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 sm:h-9 sm:w-9 p-0">
+                        </DialogContent>
+                        </Dialog>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 sm:h-9 sm:w-9 p-0"
+                          onClick={() => handleEdit(blog)}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-7xl w-full h-[90vh] p-0 m-0">
-                        <DialogHeader className="px-6 py-4 border-b">
-                          <DialogTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-                            <Edit className="h-5 w-5" />
-                            Edit Blog - {blog.title}
-                          </DialogTitle>
-                          <p className="text-xs md:text-sm text-muted-foreground mt-1">Update blog details to keep your content accurate.</p>
-                        </DialogHeader>
-                        <div className="p-6 space-y-6 overflow-y-auto">
-                          {renderForm()}
-                          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-                            <Button className="flex-1 h-10 sm:h-auto bg-primary hover:bg-primary/90">
-                              Save Changes
+                        <Dialog open={isEditOpen && selectedBlog?.id === blog.id} onOpenChange={(open) => {
+                          if (!open) {
+                            setIsEditOpen(false);
+                            setSelectedBlog(null);
+                          }
+                        }}>
+                          <DialogContent className="max-w-7xl w-full h-[90vh] p-0 m-0">
+                            <DialogHeader className="px-6 py-4 border-b">
+                              <DialogTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                                <Edit className="h-5 w-5" />
+                                Edit Blog {formData.title ? `- ${formData.title}` : ''}
+                              </DialogTitle>
+                              <p className="text-xs md:text-sm text-muted-foreground mt-1">Update blog details to keep your content accurate.</p>
+                            </DialogHeader>
+                            <div className="p-6 space-y-6 overflow-y-auto">
+                              {isLoadingBlog ? (
+                                <div className="flex items-center justify-center py-12">
+                                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                </div>
+                              ) : (
+                                <>
+                                  {renderForm()}
+                                  <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+                                    <Button 
+                                      className="flex-1 h-10 sm:h-auto bg-primary hover:bg-primary/90"
+                                      onClick={handleSave}
+                                      disabled={isSaving || !isSEOValid()}
+                                    >
+                                      {isSaving ? (
+                                        <>
+                                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                          Saving...
+                                        </>
+                                      ) : (
+                                        'Save Changes'
+                                      )}
+                                    </Button>
+                                    <Button 
+                                      variant="outline" 
+                                      className="flex-1 h-10 sm:h-auto"
+                                      onClick={() => setIsEditOpen(false)}
+                                      disabled={isSaving}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 sm:h-9 sm:w-9 p-0">
+                              <MoreVertical className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" className="flex-1 h-10 sm:h-auto">
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 sm:h-9 sm:w-9 p-0">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Duplicate</DropdownMenuItem>
-                        <DropdownMenuItem>Archive</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>Duplicate</DropdownMenuItem>
+                            <DropdownMenuItem>Archive</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        )}
       </Card>
 
       {/* Create Dialog */}
@@ -805,10 +1061,39 @@ export default function Blogs() {
           <div className="p-6 space-y-6 overflow-y-auto">
             {renderForm()}
             <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-              <Button className="flex-1 h-10 sm:h-auto bg-primary hover:bg-primary/90">
-                Create Blog
-              </Button>
-              <Button variant="outline" className="flex-1 h-10 sm:h-auto">
+              {currentTab === 'seo' ? (
+                <Button 
+                  className="flex-1 h-10 sm:h-auto bg-primary hover:bg-primary/90"
+                  onClick={handleSave}
+                  disabled={isSaving || !isSEOValid()}
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Blog'
+                  )}
+                </Button>
+              ) : (
+                <Button 
+                  className="flex-1 h-10 sm:h-auto bg-primary hover:bg-primary/90"
+                  onClick={handleContinue}
+                  disabled={isSaving || (currentTab === 'basic' && !isBasicInfoValid()) || (currentTab === 'content' && !isContentValid())}
+                >
+                  Continue
+                </Button>
+              )}
+              <Button 
+                variant="outline" 
+                className="flex-1 h-10 sm:h-auto"
+                onClick={() => {
+                  setIsCreateOpen(false);
+                  setCurrentTab('basic');
+                }}
+                disabled={isSaving}
+              >
                 Cancel
               </Button>
             </div>

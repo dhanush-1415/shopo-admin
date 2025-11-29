@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { Search, MoreVertical, Eye, Download, MapPin, Phone, Mail, Package, Edit, Trash2, DollarSign, CreditCard, FileText, Save, X, Hash, Award, Circle, ListOrdered, Scale, Ruler } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Search, MoreVertical, Eye, Download, MapPin, Phone, Mail, Package, Edit, Trash2, DollarSign, CreditCard, FileText, Save, X, Hash, Award, Circle, ListOrdered, Scale, Ruler, Loader2, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+import { getAllOrders } from '@/api/services/orderService';
+import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -30,94 +33,80 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from '@/components/ui/label';
 
-const orders = [
-  {
-    id: '#ORD-001',
-    customer: 'John Doe',
-    email: 'john@example.com',
-    phone: '+1 234 567 890',
-    date: '2024-01-15',
-    total: '$299.00',
-    subtotal: '$249.00',
-    tax: '$25.00',
-    shipping: '$25.00',
-    status: 'delivered',
-    payment: 'Prepaid',
-    address: '123 Main St, Apt 4B, New York, NY 10001',
-    items: [
-      { name: 'Premium Headphones', qty: 1, price: '$249.00' },
-    ]
-  },
-  {
-    id: '#ORD-002',
-    customer: 'Jane Smith',
-    email: 'jane@example.com',
-    phone: '+1 234 567 891',
-    date: '2024-01-16',
-    total: '$149.00',
-    subtotal: '$129.00',
-    tax: '$13.00',
-    shipping: '$7.00',
-    status: 'processing',
-    payment: 'COD',
-    address: '456 Oak Avenue, Los Angeles, CA 90001',
-    items: [
-      { name: 'Wireless Mouse', qty: 2, price: '$98.00' },
-      { name: 'Mouse Pad', qty: 1, price: '$31.00' },
-    ]
-  },
-  {
-    id: '#ORD-003',
-    customer: 'Bob Wilson',
-    email: 'bob@example.com',
-    phone: '+1 234 567 892',
-    date: '2024-01-17',
-    total: '$499.00',
-    subtotal: '$449.00',
-    tax: '$45.00',
-    shipping: '$5.00',
-    status: 'shipped',
-    payment: 'Prepaid',
-    address: '789 Pine Road, Chicago, IL 60601',
-    items: [
-      { name: 'Gaming Monitor', qty: 1, price: '$449.00' },
-    ]
-  },
-  {
-    id: '#ORD-004',
-    customer: 'Alice Brown',
-    email: 'alice@example.com',
-    phone: '+1 234 567 893',
-    date: '2024-01-18',
-    total: '$79.00',
-    subtotal: '$70.00',
-    tax: '$7.00',
-    shipping: '$2.00',
-    status: 'pending',
-    payment: 'Prepaid',
-    address: '321 Elm Street, Houston, TX 77001',
-    items: [
-      { name: 'USB-C Hub', qty: 1, price: '$70.00' },
-    ]
-  },
-  {
-    id: '#ORD-005',
-    customer: 'Charlie Davis',
-    email: 'charlie@example.com',
-    phone: '+1 234 567 894',
-    date: '2024-01-19',
-    total: '$199.00',
-    subtotal: '$169.00',
-    tax: '$17.00',
-    shipping: '$13.00',
-    status: 'cancelled',
-    payment: 'COD',
-    address: '555 Maple Drive, Miami, FL 33101',
-    items: [
-      { name: 'Mechanical Keyboard', qty: 1, price: '$169.00' },
-    ]
-  },
-];
+// Transform API order data to UI format
+const transformOrder = (apiOrder) => {
+  const formatCurrency = (amount) => {
+    if (typeof amount === 'number') {
+      return `₹${amount.toFixed(2)}`;
+    }
+    return `₹${parseFloat(amount || 0).toFixed(2)}`;
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return new Date().toLocaleDateString();
+    try {
+      return new Date(dateString).toLocaleDateString('en-GB', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatOrderId = (id) => {
+    if (!id) return '#ORD-000';
+    // Use first 8 characters of UUID for display
+    const shortId = id.substring(0, 8).toUpperCase();
+    return `#ORD-${shortId}`;
+  };
+
+  const customer = apiOrder.Customer || {};
+  const orderItems = apiOrder.OrderItems || [];
+
+  // Build full address from customer details
+  const addressParts = [
+    apiOrder.shippingAddress || customer.address,
+    customer.city,
+    customer.state,
+    customer.country,
+    customer.postalCode
+  ].filter(Boolean);
+  const fullAddress = addressParts.join(', ');
+
+  // Transform order items
+  const items = orderItems.map(item => ({
+    name: item.productName || item.Product?.name || 'Unknown Product',
+    qty: item.quantity || 0,
+    price: formatCurrency(item.unitPrice || item.totalPrice || 0),
+    productId: item.productId,
+    productColorId: item.productColorId,
+    productSizeId: item.productSizeId,
+  }));
+
+  return {
+    id: formatOrderId(apiOrder.id),
+    originalId: apiOrder.id,
+    customer: customer.name || 'Unknown Customer',
+    email: customer.email || '',
+    phone: customer.phone || '',
+    date: formatDate(apiOrder.createdAt),
+    total: formatCurrency(apiOrder.finalAmount || apiOrder.totalAmount || 0),
+    subtotal: formatCurrency(apiOrder.subTotal || 0),
+    tax: formatCurrency(apiOrder.tax || 0),
+    shipping: formatCurrency(apiOrder.shippingCharge || 0),
+    status: apiOrder.status || 'pending',
+    payment: apiOrder.paymentMethod || 'Unknown',
+    paymentStatus: apiOrder.paymentStatus || 'pending',
+    address: fullAddress || 'No address provided',
+    orderNote: apiOrder.orderNote || '',
+    totalItems: apiOrder.totalItems || 0,
+    items: items,
+    // Keep original data for edit functionality
+    originalData: apiOrder,
+  };
+};
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -146,6 +135,65 @@ const getStatusLabel = (status) => {
 
 export default function Orders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const { getToken } = useAuthStore();
+
+  // Fetch orders from API
+  const fetchOrders = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const token = getToken();
+      if (!token) {
+        setError('Authentication token not found');
+        toast.error('Please login to view orders');
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await getAllOrders(token);
+      
+      if (response.success) {
+        // Transform API orders to UI format
+        const transformedOrders = (response.data || []).map(transformOrder);
+        setOrders(transformedOrders);
+        setPagination(response.pagination);
+      } else {
+        setError(response.error || 'Failed to fetch orders');
+        toast.error(response.error || 'Failed to fetch orders');
+        setOrders([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch orders:', err);
+      setError(err.message || 'An unexpected error occurred');
+      toast.error('Failed to fetch orders');
+      setOrders([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch orders on component mount
+  useEffect(() => {
+    fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Filter orders based on search query
+  const filteredOrders = orders.filter(order => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      order.id.toLowerCase().includes(query) ||
+      order.customer.toLowerCase().includes(query) ||
+      order.email.toLowerCase().includes(query) ||
+      order.phone.includes(query)
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -158,30 +206,62 @@ export default function Orders() {
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search orders..." className="pl-10" />
+            <Input 
+              placeholder="Search orders..." 
+              className="pl-10" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">Filter</Button>
+            <Button 
+              variant="outline" 
+              onClick={fetchOrders}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
             <Button variant="outline">Export</Button>
           </div>
         </div>
       </Card>
 
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-center">Order ID</TableHead>
-              <TableHead className="text-center">Customer</TableHead>
-              <TableHead className="text-center">Date</TableHead>
-              <TableHead className="text-center">Total</TableHead>
-              <TableHead className="text-center">Payment</TableHead>
-              <TableHead className="text-center">Status</TableHead>
-              <TableHead className="text-center">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {orders.map((order) => (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button variant="outline" onClick={fetchOrders} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-center">Order ID</TableHead>
+                <TableHead className="text-center">Customer</TableHead>
+                <TableHead className="text-center">Date</TableHead>
+                <TableHead className="text-center">Total</TableHead>
+                <TableHead className="text-center">Payment</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+                <TableHead className="text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredOrders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    {searchQuery ? `No orders found matching "${searchQuery}"` : 'No orders found'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredOrders.map((order) => (
               <TableRow key={order.id}>
                 <TableCell className="text-center font-medium">{order.id}</TableCell>
                 <TableCell className="text-center">{order.customer}</TableCell>
@@ -634,9 +714,11 @@ export default function Orders() {
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        )}
       </Card>
     </div>
   );
