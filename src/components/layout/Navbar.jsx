@@ -89,16 +89,16 @@ export function Navbar({ onToggleSidebar }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <div className="hidden sm:flex items-center gap-2 ml-2 pl-2 border-l border-border cursor-pointer hover:opacity-80 transition-opacity">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
                   <span className="text-primary-foreground text-sm font-medium">
                     {getUserInitials()}
                   </span>
-                </div>
-                <div className="hidden lg:block">
+            </div>
+            <div className="hidden lg:block">
                   <p className="text-sm font-medium">{user?.name || 'Admin User'}</p>
                   <p className="text-xs text-muted-foreground">{user?.email || 'admin@store.com'}</p>
-                </div>
-              </div>
+            </div>
+          </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <div className="px-2 py-1.5">

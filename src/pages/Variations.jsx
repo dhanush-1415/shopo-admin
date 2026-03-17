@@ -88,6 +88,8 @@ export default function Variations() {
   const [activeTab, setActiveTab] = useState('colors');
   // File input ref for size chart
   const fileInputRef = useRef(null);
+  // Preview Image State
+  const [previewImage, setPreviewImage] = useState(null);
 
   // Fetch colors from API
   const fetchColors = async () => {
@@ -99,7 +101,7 @@ export default function Variations() {
 
       if (response.success) {
         // Extract color names from API response
-        const colorNames = response.data.map(color => 
+        const colorNames = response.data.map(color =>
           color.color || color.name || color
         );
         setApiColors(colorNames);
@@ -129,15 +131,15 @@ export default function Variations() {
 
       if (response.success) {
         setApiSizes(response.data || []);
-        
+
         // Extract topwear and bottomwear sizes
-        const topwearData = response.data.find(item => 
+        const topwearData = response.data.find(item =>
           item.type?.toLowerCase() === 'topwear'
         );
-        const bottomwearData = response.data.find(item => 
+        const bottomwearData = response.data.find(item =>
           item.type?.toLowerCase() === 'bottomwear'
         );
-        
+
         setTopwearSizes(topwearData?.size || []);
         setBottomwearSizes(bottomwearData?.size || []);
       } else {
@@ -158,17 +160,17 @@ export default function Variations() {
   };
 
   // Filter functions
-  const filteredColors = availableColors.filter(color => 
-    color.toLowerCase().includes(colorSearch.toLowerCase())
+  const filteredColors = availableColors.filter(color =>
+    String(color || '').toLowerCase().includes(colorSearch.toLowerCase())
   );
-  const filteredTopwearSizes = topwearSizes.filter(size => 
-    size.toLowerCase().includes(topwearSearch.toLowerCase())
+  const filteredTopwearSizes = topwearSizes.filter(size =>
+    String(size || '').toLowerCase().includes(topwearSearch.toLowerCase())
   );
-  const filteredBottomwearSizes = bottomwearSizes.filter(size => 
-    size.toLowerCase().includes(bottomwearSearch.toLowerCase())
+  const filteredBottomwearSizes = bottomwearSizes.filter(size =>
+    String(size || '').toLowerCase().includes(bottomwearSearch.toLowerCase())
   );
-  const filteredSizeCharts = sizeCharts.filter(chart => 
-    chart.name.toLowerCase().includes(sizeChartSearch.toLowerCase())
+  const filteredSizeCharts = sizeCharts.filter(chart =>
+    String(chart.name || '').toLowerCase().includes(sizeChartSearch.toLowerCase())
   );
 
   // Fetch categories for size chart upload
@@ -177,7 +179,7 @@ export default function Variations() {
     try {
       const token = getToken();
       const response = await getAllCategories(token);
-      
+
       if (response.success) {
         setCategories(response.data || []);
       } else {
@@ -214,11 +216,11 @@ export default function Variations() {
 
           return {
             id: chart.id || String(Date.now()),
-            name: chart.name || chart.image || 'Size Chart',
-            type: chart.type || (chart.image?.includes('.pdf') ? 'application/pdf' : 'image'),
+            name: chart.category?.name ? `${chart.category.name} Size Chart` : 'Size Chart',
+            type: 'image', // explicit set to image as per requirements
             date: formatDate(chart.createdAt || chart.updatedAt),
-            file: chart.image || chart.file,
-            imageUrl: chart.image, // Store image URL from API
+            file: null, // file object not available from API response usually
+            imageUrl: Array.isArray(chart.image) ? chart.image[0] : chart.image, // Handle array or string
             categoryId: chart.categoryId,
             categoryName: chart.category?.name || 'Unknown Category',
           };
@@ -581,11 +583,11 @@ export default function Variations() {
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-8 w-8 p-0" 
-                    onClick={() => setEditingIndex(globalIndex)} 
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setEditingIndex(globalIndex)}
                     aria-label="Edit"
                   >
                     <Edit className="h-4 w-4" />
@@ -634,16 +636,16 @@ export default function Variations() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-6 px-4">
         <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
           <Search className="h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Filter colors..." 
+          <Input
+            placeholder="Filter colors..."
             value={colorSearch}
             onChange={(e) => setColorSearch(e.target.value)}
             className="max-w-sm bg-transparent border-none focus-visible:ring-0"
           />
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={fetchColors}
             disabled={isLoadingColors}
@@ -697,8 +699,8 @@ export default function Variations() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-6 px-4">
         <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
           <Search className="h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Filter topwear sizes..." 
+          <Input
+            placeholder="Filter topwear sizes..."
             value={topwearSearch}
             onChange={(e) => setTopwearSearch(e.target.value)}
             className="max-w-sm bg-transparent border-none focus-visible:ring-0"
@@ -739,8 +741,8 @@ export default function Variations() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-6 px-4">
         <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
           <Search className="h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Filter bottomwear sizes..." 
+          <Input
+            placeholder="Filter bottomwear sizes..."
             value={bottomwearSearch}
             onChange={(e) => setBottomwearSearch(e.target.value)}
             className="max-w-sm bg-transparent border-none focus-visible:ring-0"
@@ -781,17 +783,17 @@ export default function Variations() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-6 px-4">
         <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
           <Search className="h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Filter size charts..." 
+          <Input
+            placeholder="Filter size charts..."
             value={sizeChartSearch}
             onChange={(e) => setSizeChartSearch(e.target.value)}
             className="max-w-sm bg-transparent border-none focus-visible:ring-0"
           />
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="gap-2"
             onClick={fetchSizeCharts}
             disabled={isLoadingSizeCharts}
@@ -826,9 +828,8 @@ export default function Variations() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>Preview</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Type</TableHead>
                 <TableHead>Uploaded</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -836,7 +837,7 @@ export default function Variations() {
             <TableBody>
               {filteredSizeCharts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                     {sizeChartSearch ? `No size charts found matching "${sizeChartSearch}"` : 'No size charts found. Upload a new one to get started.'}
                   </TableCell>
                 </TableRow>
@@ -844,9 +845,21 @@ export default function Variations() {
                 filteredSizeCharts.map((chart) => (
                   <TableRow key={chart.id} className="hover:bg-muted/50 border-b">
                     <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Ruler className="h-4 w-4 text-muted-foreground" />
-                        <span>{chart.name}</span>
+                      <div
+                        className="h-16 w-16 rounded-md overflow-hidden border bg-muted cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                        onClick={() => setPreviewImage(chart.imageUrl)}
+                      >
+                        {chart.imageUrl ? (
+                          <img
+                            src={chart.imageUrl}
+                            alt="Size Chart"
+                            className="h-full w-full object-cover transition-transform hover:scale-110"
+                          />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center">
+                            <Ruler className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -854,19 +867,15 @@ export default function Variations() {
                         {chart.categoryName}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {chart.type?.includes('pdf') ? 'PDF' : 'Image'}
-                      </Badge>
-                    </TableCell>
+
                     <TableCell>{chart.date}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {chart.imageUrl && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
                             onClick={() => handleDownload(chart.imageUrl, chart.name)}
                             aria-label="View"
                           >
@@ -982,29 +991,29 @@ export default function Variations() {
 
       {/* Tab Buttons */}
       <div className="flex flex-wrap gap-2 mb-4">
-        <Button 
-          variant={activeTab === 'colors' ? 'default' : 'outline'} 
+        <Button
+          variant={activeTab === 'colors' ? 'default' : 'outline'}
           onClick={() => setActiveTab('colors')}
           className="flex-1 min-w-[120px]"
         >
           Colors ({availableColors.length})
         </Button>
-        <Button 
-          variant={activeTab === 'topwear' ? 'default' : 'outline'} 
+        <Button
+          variant={activeTab === 'topwear' ? 'default' : 'outline'}
           onClick={() => setActiveTab('topwear')}
           className="flex-1 min-w-[120px]"
         >
           Topwear Sizes ({topwearSizes.length})
         </Button>
-        <Button 
-          variant={activeTab === 'bottomwear' ? 'default' : 'outline'} 
+        <Button
+          variant={activeTab === 'bottomwear' ? 'default' : 'outline'}
           onClick={() => setActiveTab('bottomwear')}
           className="flex-1 min-w-[120px]"
         >
           Bottomwear Sizes ({bottomwearSizes.length})
         </Button>
-        <Button 
-          variant={activeTab === 'sizecharts' ? 'default' : 'outline'} 
+        <Button
+          variant={activeTab === 'sizecharts' ? 'default' : 'outline'}
           onClick={() => setActiveTab('sizecharts')}
           className="flex-1 min-w-[120px]"
         >
@@ -1022,342 +1031,363 @@ export default function Variations() {
             </h3>
           </div>
         </CardHeader>
-      {activeTab === 'colors' && <ColorsSection />}
-      {activeTab === 'topwear' && <TopwearSection />}
-      {activeTab === 'bottomwear' && <BottomwearSection />}
-      {activeTab === 'sizecharts' && <SizeChartSection />}
-    </Card>
+        {activeTab === 'colors' && <ColorsSection />}
+        {activeTab === 'topwear' && <TopwearSection />}
+        {activeTab === 'bottomwear' && <BottomwearSection />}
+        {activeTab === 'sizecharts' && <SizeChartSection />}
+      </Card>
 
-    {/* Add Color Dialog - Outside ColorsSection to prevent re-renders */}
-    <Dialog open={isAddColorOpen} onOpenChange={setIsAddColorOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add New Color</DialogTitle>
-        </DialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleAddCustomColor();
-          }}
-          className="space-y-4"
-        >
-          <Input
-            placeholder="Enter new color (e.g., Teal)"
-            value={newColorInput}
-            onChange={(e) => {
-              e.stopPropagation();
-              setNewColorInput(e.target.value);
+      {/* Add Color Dialog - Outside ColorsSection to prevent re-renders */}
+      <Dialog open={isAddColorOpen} onOpenChange={setIsAddColorOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Color</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAddCustomColor();
             }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !isCreatingColor) {
-                e.preventDefault();
-                handleAddCustomColor();
-              }
-            }}
-            autoFocus
-            disabled={isCreatingColor}
-          />
-          <div className="flex justify-end gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => {
-                setIsAddColorOpen(false);
-                setNewColorInput('');
-              }}
-              disabled={isCreatingColor}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit"
-              disabled={!newColorInput.trim() || isCreatingColor}
-            >
-              {isCreatingColor ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                'Add'
-              )}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
-
-    {/* Add Topwear Size Dialog - Outside TopwearSection to prevent re-renders */}
-    <Dialog open={isAddTopwearSizeOpen} onOpenChange={setIsAddTopwearSizeOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add New Topwear Size</DialogTitle>
-        </DialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (newTopwearSizeInput.trim() && !isCreatingTopwearSize) {
-              handleAddCustomTopwearSize();
-            }
-          }}
-          className="space-y-4"
-        >
-          <Input
-            placeholder="Enter new size (e.g., 5XL)"
-            value={newTopwearSizeInput}
-            onChange={(e) => {
-              e.stopPropagation();
-              setNewTopwearSizeInput(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                if (newTopwearSizeInput.trim() && !isCreatingTopwearSize) {
-                  handleAddCustomTopwearSize();
-                }
-              }
-            }}
-            autoFocus
-            disabled={isCreatingTopwearSize}
-          />
-          <div className="flex justify-end gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => {
-                setIsAddTopwearSizeOpen(false);
-                setNewTopwearSizeInput('');
-              }}
-              disabled={isCreatingTopwearSize}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={!newTopwearSizeInput.trim() || isCreatingTopwearSize}
-            >
-              {isCreatingTopwearSize ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                'Add'
-              )}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
-
-    {/* Add Bottomwear Size Dialog - Outside BottomwearSection to prevent re-renders */}
-    <Dialog open={isAddBottomwearSizeOpen} onOpenChange={setIsAddBottomwearSizeOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add New Bottomwear Size</DialogTitle>
-        </DialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (newBottomwearSizeInput.trim() && !isCreatingBottomwearSize) {
-              handleAddCustomBottomwearSize();
-            }
-          }}
-          className="space-y-4"
-        >
-          <Input
-            placeholder="Enter new size (e.g., 42)"
-            value={newBottomwearSizeInput}
-            onChange={(e) => {
-              e.stopPropagation();
-              setNewBottomwearSizeInput(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                if (newBottomwearSizeInput.trim() && !isCreatingBottomwearSize) {
-                  handleAddCustomBottomwearSize();
-                }
-              }
-            }}
-            autoFocus
-            disabled={isCreatingBottomwearSize}
-          />
-          <div className="flex justify-end gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => {
-                setIsAddBottomwearSizeOpen(false);
-                setNewBottomwearSizeInput('');
-              }}
-              disabled={isCreatingBottomwearSize}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={!newBottomwearSizeInput.trim() || isCreatingBottomwearSize}
-            >
-              {isCreatingBottomwearSize ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                'Add'
-              )}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
-
-    {/* Add Size Chart Dialog - Outside SizeChartSection to prevent re-renders */}
-    <Dialog open={isAddSizeChartOpen} onOpenChange={setIsAddSizeChartOpen}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>Upload Size Chart</DialogTitle>
-        </DialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (selectedSizeChartFile && selectedCategoryId && !isCreatingSizeChart) {
-              handleSizeChartUpload();
-            }
-          }}
-          className="space-y-4"
-        >
-          {/* Category Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="category">Category *</Label>
-            <Select
-              value={selectedCategoryId}
-              onValueChange={(value) => {
-                setSelectedCategoryId(value);
-              }}
-              disabled={isLoadingCategories || isCreatingSizeChart}
-            >
-              <SelectTrigger 
-                id="category" 
-                className="w-full"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <SelectValue placeholder={isLoadingCategories ? "Loading categories..." : "Select a category"} />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={String(category.id)}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* File Upload */}
-          <div className="space-y-2">
-            <Label>Size Chart File *</Label>
+            className="space-y-4"
+          >
             <Input
-              type="file"
-              accept="image/*,application/pdf"
+              placeholder="Enter new color (e.g., Teal)"
+              value={newColorInput}
               onChange={(e) => {
                 e.stopPropagation();
-                if (e.target.files && e.target.files[0]) {
-                  handleFileSelect(e.target.files[0]);
+                setNewColorInput(e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !isCreatingColor) {
+                  e.preventDefault();
+                  handleAddCustomColor();
                 }
               }}
-              className="hidden"
-              ref={fileInputRef}
-              disabled={isCreatingSizeChart}
+              autoFocus
+              disabled={isCreatingColor}
             />
-            <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
-                dragActive ? 'border-primary bg-primary/5' : 'border-muted'
-              } ${isCreatingSizeChart ? 'opacity-50 cursor-not-allowed' : ''}`}
-              onDragEnter={(e) => {
-                e.preventDefault();
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAddColorOpen(false);
+                  setNewColorInput('');
+                }}
+                disabled={isCreatingColor}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!newColorInput.trim() || isCreatingColor}
+              >
+                {isCreatingColor ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Add'
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Topwear Size Dialog - Outside TopwearSection to prevent re-renders */}
+      <Dialog open={isAddTopwearSizeOpen} onOpenChange={setIsAddTopwearSizeOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Topwear Size</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (newTopwearSizeInput.trim() && !isCreatingTopwearSize) {
+                handleAddCustomTopwearSize();
+              }
+            }}
+            className="space-y-4"
+          >
+            <Input
+              placeholder="Enter new size (e.g., 5XL)"
+              value={newTopwearSizeInput}
+              onChange={(e) => {
                 e.stopPropagation();
-                handleDrag(e);
+                setNewTopwearSizeInput(e.target.value);
               }}
-              onDragLeave={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleDrag(e);
-              }}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleDrag(e);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleDrop(e);
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!isCreatingSizeChart) {
-                  handleFileSelectClick();
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (newTopwearSizeInput.trim() && !isCreatingTopwearSize) {
+                    handleAddCustomTopwearSize();
+                  }
                 }
               }}
-            >
-              <div className="flex flex-col items-center justify-center py-8">
-                {selectedSizeChartFile ? (
-                  <div className="space-y-2">
-                    <BadgeCheck className="h-8 w-8 mb-2 text-primary" />
-                    <p className="text-sm font-medium mb-1">{selectedSizeChartFile.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Click to select a different file
-                    </p>
-                  </div>
-                ) : (
+              autoFocus
+              disabled={isCreatingTopwearSize}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAddTopwearSizeOpen(false);
+                  setNewTopwearSizeInput('');
+                }}
+                disabled={isCreatingTopwearSize}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!newTopwearSizeInput.trim() || isCreatingTopwearSize}
+              >
+                {isCreatingTopwearSize ? (
                   <>
-                    <Upload className={`h-8 w-8 mb-2 transition-colors ${dragActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                    <p className="text-sm font-medium mb-1">Drag & drop your file here, or click to select from your computer</p>
-                    <p className={`text-xs mb-4 transition-colors ${dragActive ? 'text-primary' : 'text-muted-foreground'}`}>
-                      Supports PDF and images (JPG, PNG, etc.)
-                    </p>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Adding...
                   </>
+                ) : (
+                  'Add'
                 )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Bottomwear Size Dialog - Outside BottomwearSection to prevent re-renders */}
+      <Dialog open={isAddBottomwearSizeOpen} onOpenChange={setIsAddBottomwearSizeOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Bottomwear Size</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (newBottomwearSizeInput.trim() && !isCreatingBottomwearSize) {
+                handleAddCustomBottomwearSize();
+              }
+            }}
+            className="space-y-4"
+          >
+            <Input
+              placeholder="Enter new size (e.g., 42)"
+              value={newBottomwearSizeInput}
+              onChange={(e) => {
+                e.stopPropagation();
+                setNewBottomwearSizeInput(e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (newBottomwearSizeInput.trim() && !isCreatingBottomwearSize) {
+                    handleAddCustomBottomwearSize();
+                  }
+                }
+              }}
+              autoFocus
+              disabled={isCreatingBottomwearSize}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAddBottomwearSizeOpen(false);
+                  setNewBottomwearSizeInput('');
+                }}
+                disabled={isCreatingBottomwearSize}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!newBottomwearSizeInput.trim() || isCreatingBottomwearSize}
+              >
+                {isCreatingBottomwearSize ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  'Add'
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Size Chart Dialog - Outside SizeChartSection to prevent re-renders */}
+      <Dialog open={isAddSizeChartOpen} onOpenChange={setIsAddSizeChartOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Upload Size Chart</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (selectedSizeChartFile && selectedCategoryId && !isCreatingSizeChart) {
+                handleSizeChartUpload();
+              }
+            }}
+            className="space-y-4"
+          >
+            {/* Category Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="category">Category *</Label>
+              <Select
+                value={selectedCategoryId}
+                onValueChange={(value) => {
+                  setSelectedCategoryId(value);
+                }}
+                disabled={isLoadingCategories || isCreatingSizeChart}
+              >
+                <SelectTrigger
+                  id="category"
+                  className="w-full"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <SelectValue placeholder={isLoadingCategories ? "Loading categories..." : "Select a category"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={String(category.id)}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* File Upload */}
+            <div className="space-y-2">
+              <Label>Size Chart File *</Label>
+              <Input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(e) => {
+                  e.stopPropagation();
+                  if (e.target.files && e.target.files[0]) {
+                    handleFileSelect(e.target.files[0]);
+                  }
+                }}
+                className="hidden"
+                ref={fileInputRef}
+                disabled={isCreatingSizeChart}
+              />
+              <div
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${dragActive ? 'border-primary bg-primary/5' : 'border-muted'
+                  } ${isCreatingSizeChart ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDrag(e);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDrag(e);
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDrag(e);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDrop(e);
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isCreatingSizeChart) {
+                    handleFileSelectClick();
+                  }
+                }}
+              >
+                <div className="flex flex-col items-center justify-center py-8">
+                  {selectedSizeChartFile ? (
+                    <div className="space-y-2">
+                      <BadgeCheck className="h-8 w-8 mb-2 text-primary" />
+                      <p className="text-sm font-medium mb-1">{selectedSizeChartFile.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Click to select a different file
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className={`h-8 w-8 mb-2 transition-colors ${dragActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <p className="text-sm font-medium mb-1">Drag & drop your file here, or click to select from your computer</p>
+                      <p className={`text-xs mb-4 transition-colors ${dragActive ? 'text-primary' : 'text-muted-foreground'}`}>
+                        Supports PDF and images (JPG, PNG, etc.)
+                      </p>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsAddSizeChartOpen(false);
-                setSelectedSizeChartFile(null);
-                setSelectedCategoryId('');
-                if (fileInputRef.current) {
-                  fileInputRef.current.value = '';
-                }
-              }}
-              disabled={isCreatingSizeChart}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsAddSizeChartOpen(false);
+                  setSelectedSizeChartFile(null);
+                  setSelectedCategoryId('');
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                  }
+                }}
+                disabled={isCreatingSizeChart}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!selectedSizeChartFile || !selectedCategoryId || isCreatingSizeChart}
+              >
+                {isCreatingSizeChart ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  'Upload'
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {/* Image Preview Dialog */}
+      <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+        <DialogContent className="max-w-3xl w-full p-1 bg-transparent border-none shadow-none">
+          <div className="relative rounded-lg overflow-hidden bg-background">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 h-8 w-8 bg-black/50 hover:bg-black/70 text-white rounded-full z-10"
+              onClick={() => setPreviewImage(null)}
             >
-              Cancel
+              <X className="h-4 w-4" />
             </Button>
-            <Button 
-              type="submit"
-              disabled={!selectedSizeChartFile || !selectedCategoryId || isCreatingSizeChart}
-            >
-              {isCreatingSizeChart ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                'Upload'
-              )}
-            </Button>
+            {previewImage && (
+              <img
+                src={previewImage}
+                alt="Preview"
+                className="w-full h-auto max-h-[80vh] object-contain"
+              />
+            )}
           </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

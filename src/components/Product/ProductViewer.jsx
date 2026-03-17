@@ -118,10 +118,10 @@ const ProductViewer = ({ product, onEdit }) => {
             <h2 className="text-xl md:text-2xl font-bold">{transformedProduct.title}</h2>
             <p className="text-sm md:text-base text-muted-foreground leading-relaxed">{transformedProduct.description}</p>
             {transformedProduct.color && transformedProduct.color !== 'N/A' && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs md:text-sm font-medium">Color:</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs md:text-sm font-medium">Color:</span>
                 <Badge variant="outline" className="text-xs md:text-sm">{transformedProduct.color}</Badge>
-              </div>
+            </div>
             )}
           </div>
         </div>
@@ -218,38 +218,38 @@ const ProductViewer = ({ product, onEdit }) => {
             <Separator />
             {transformedProduct.color && transformedProduct.color !== 'N/A' && (
               <>
-                <div className="space-y-2">
-                  <p className="text-xs md:text-sm text-muted-foreground">Color</p>
+            <div className="space-y-2">
+              <p className="text-xs md:text-sm text-muted-foreground">Color</p>
                   <Badge variant="outline" className="text-xs md:text-sm">{transformedProduct.color}</Badge>
-                </div>
-                <Separator />
+            </div>
+            <Separator />
               </>
             )}
             {transformedProduct.variations && transformedProduct.variations.length > 0 && (
               <>
-                <div className="space-y-2">
-                  <p className="text-xs md:text-sm text-muted-foreground">Variations</p>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[100px]">Color</TableHead>
-                          <TableHead className="w-[80px]">Size</TableHead>
-                          <TableHead className="w-[80px]">Stock</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
+            <div className="space-y-2">
+              <p className="text-xs md:text-sm text-muted-foreground">Variations</p>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[100px]">Color</TableHead>
+                      <TableHead className="w-[80px]">Size</TableHead>
+                      <TableHead className="w-[80px]">Stock</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                         {transformedProduct.variations.map((v, i) => (
-                          <TableRow key={i}>
-                            <TableCell className="text-xs">{v.color}</TableCell>
-                            <TableCell className="text-xs">{v.size}</TableCell>
-                            <TableCell className="text-xs">{v.stock}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
+                      <TableRow key={i}>
+                        <TableCell className="text-xs">{v.color}</TableCell>
+                        <TableCell className="text-xs">{v.size}</TableCell>
+                        <TableCell className="text-xs">{v.stock}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
               </>
             )}
           </Card>
@@ -297,7 +297,7 @@ const ProductViewer = ({ product, onEdit }) => {
       </div>
     </div>
   </>
-  );
+);
 };
 
 export default ProductViewer;

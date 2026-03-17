@@ -179,7 +179,7 @@ export default function Orders() {
 
   // Fetch orders on component mount
   useEffect(() => {
-    fetchOrders();
+      fetchOrders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -280,8 +280,8 @@ export default function Orders() {
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <Eye className="h-4 w-4" />
+                      </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-7xl w-full h-[90vh] p-0 m-0">
                         <DialogHeader className="p-6 border-b">
@@ -442,11 +442,11 @@ export default function Orders() {
                                 </TableHeader>
                                 <TableBody>
                                   {order.items.map((item, idx) => (
-                                    <TableRow key={idx}>
-                                      <TableCell className="font-medium">{item.name}</TableCell>
-                                      <TableCell className="text-center">{item.qty}</TableCell>
-                                      <TableCell className="text-right">{item.price}</TableCell>
-                                    </TableRow>
+                                      <TableRow key={idx}>
+                                        <TableCell className="font-medium">{item.name}</TableCell>
+                                        <TableCell className="text-center">{item.qty}</TableCell>
+                                        <TableCell className="text-right">{item.price}</TableCell>
+                                      </TableRow>
                                   ))}
                                 </TableBody>
                               </Table>
@@ -481,7 +481,7 @@ export default function Orders() {
                               </div>
                             </Card>
                           </div>
-
+                          
                           {/* Actions */}
                           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
                             <Button variant="outline" className="flex-1">
@@ -499,8 +499,8 @@ export default function Orders() {
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button variant="ghost" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <Edit className="h-4 w-4" />
+                      </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-7xl w-full h-[90vh] p-0 m-0">
                         <DialogHeader className="px-6 py-4 border-b">
@@ -713,7 +713,7 @@ export default function Orders() {
                     </DropdownMenu>
                   </div>
                 </TableCell>
-              </TableRow>
+                </TableRow>
                 ))
               )}
             </TableBody>

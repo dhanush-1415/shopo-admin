@@ -1007,21 +1007,21 @@ export default function Categories() {
           </div>
         </Card>
       ) : (
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-1/2">Category Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-center">Products</TableHead>
-                <TableHead className="w-24">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {categories.map((category) => renderCategoryRow(category))}
-            </TableBody>
-          </Table>
-        </div>
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-1/2">Category Name</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead className="text-center">Products</TableHead>
+              <TableHead className="w-24">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {categories.map((category) => renderCategoryRow(category))}
+          </TableBody>
+        </Table>
+      </div>
       )}
 
       {/* Edit Category Dialog */}

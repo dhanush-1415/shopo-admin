@@ -38,19 +38,19 @@ const App = () => (
             
             {/* Protected Routes - All routes inside MainLayout require authentication */}
             <Route element={<ProtectedRoute />}>
-              <Route element={<MainLayout />}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/products" element={<Products />} />
-                <Route path="/variations" element={<Variations />} />
-                <Route path="/orders" element={<Orders />} />
-                <Route path="/customers" element={<Customers />} />
-                <Route path="/categories" element={<Categories />} />
-                <Route path="/discounts" element={<Discounts />} />
-                <Route path="/blogs" element={<Blogs />} />
-                {/* <Route path="/size-chart" element={<SizeChart />} /> */}
-                <Route path="/logistics" element={<Logistics />} />
-                <Route path="/gift-cards" element={<GiftCards />} />
-                <Route path="/loyalty" element={<LoyaltyProgram />} />
+            <Route element={<MainLayout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/variations" element={<Variations />} />
+              <Route path="/orders" element={<Orders />} />
+              <Route path="/customers" element={<Customers />} />
+              <Route path="/categories" element={<Categories />} />
+              <Route path="/discounts" element={<Discounts />} />
+              <Route path="/blogs" element={<Blogs />} />
+              {/* <Route path="/size-chart" element={<SizeChart />} /> */}
+              <Route path="/logistics" element={<Logistics />} />
+              <Route path="/gift-cards" element={<GiftCards />} />
+              <Route path="/loyalty" element={<LoyaltyProgram />} />
               </Route>
             </Route>
             

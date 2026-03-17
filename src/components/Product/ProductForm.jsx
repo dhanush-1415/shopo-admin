@@ -436,25 +436,25 @@ const ProductForm = ({
       }
     } else {
       // Edit mode - call onSave with form data (existing behavior)
-      onSave({
+    onSave({
         ...(initialData ? { id: initialData.id } : {}),
-        title: formData.title,
-        category: formData.mainCategory,
-        subCategory: formData.subCategory,
-        childCategory: formData.childCategory,
-        material: formData.material,
-        fitType: formData.fitType,
-        occasion: formData.occasion,
-        mrp: `₹${formData.mrp}`,
-        sellingPrice: `₹${formData.sellingPrice}`,
-        description: formData.description,
-        careInstructions: formData.careInstructions,
-        metaKeywords: formData.metaKeywords,
-        metaDescription: formData.metaDescription,
-        images: formData.images,
-        variations: formData.variations
-      });
-      onClose();
+      title: formData.title,
+      category: formData.mainCategory,
+      subCategory: formData.subCategory,
+      childCategory: formData.childCategory,
+      material: formData.material,
+      fitType: formData.fitType,
+      occasion: formData.occasion,
+      mrp: `₹${formData.mrp}`,
+      sellingPrice: `₹${formData.sellingPrice}`,
+      description: formData.description,
+      careInstructions: formData.careInstructions,
+      metaKeywords: formData.metaKeywords,
+      metaDescription: formData.metaDescription,
+      images: formData.images,
+      variations: formData.variations
+    });
+    onClose();
     }
   };
 

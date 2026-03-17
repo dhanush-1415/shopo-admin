@@ -103,9 +103,9 @@ const VariationsSection = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label className="text-xs md:text-sm font-medium text-muted-foreground">
-              Color
-            </Label>
+          <Label className="text-xs md:text-sm font-medium text-muted-foreground">
+            Color
+          </Label>
             <Dialog open={isCreateColorOpen} onOpenChange={setIsCreateColorOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 text-xs">
@@ -172,8 +172,8 @@ const VariationsSection = ({
                 </SelectItem>
               ) : colors.length > 0 ? (
                 colors.map((color) => (
-                  <SelectItem key={color} value={color}>
-                    {color}
+                <SelectItem key={color} value={color}>
+                  {color}
                   </SelectItem>
                 ))
               ) : (
@@ -270,7 +270,7 @@ const VariationsSection = ({
       )}
     </div>
   </div>
-  );
+);
 };
 
 export default VariationsSection;

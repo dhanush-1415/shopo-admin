@@ -136,7 +136,7 @@ export default function Products() {
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2 px-4 sm:px-6 h-10 sm:h-auto">
               <Plus className="h-4 w-4" />
@@ -193,11 +193,11 @@ export default function Products() {
             </div>
           ) : selectedProduct ? (
             <ProductForm 
-              isOpen={isEditOpen} 
-              onClose={() => setIsEditOpen(false)}
-              mode="edit"
-              initialData={selectedProduct}
-              onSave={handleEditSave}
+            isOpen={isEditOpen} 
+            onClose={() => setIsEditOpen(false)}
+            mode="edit"
+            initialData={selectedProduct}
+            onSave={handleEditSave}
             />
           ) : null}
         </DialogContent>
